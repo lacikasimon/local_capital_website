@@ -1,0 +1,54 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      LOCALCAPITAL_CONFIG: /var/www/html/config/config.docker.php
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: localcapital
+      DB_USERNAME: localcapital
+      DB_PASSWORD: localcapital
+      APP_BASE_URL: http://localhost:8080
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: localcapital
+      MYSQL_USER: localcapital
+      MYSQL_PASSWORD: localcapital
+      MYSQL_ROOT_PASSWORD: localcapital_root
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - ./database/imported-wordpress.sql:/docker-entrypoint-initdb.d/002-imported-wordpress.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ulocalcapital", "-plocalcapital"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

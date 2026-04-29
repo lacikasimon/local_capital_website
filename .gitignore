@@ -1,0 +1,5 @@
+.env
+.DS_Store
+*.log
+config/config.php
+data/*.tmp
