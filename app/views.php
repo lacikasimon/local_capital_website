@@ -66,6 +66,7 @@ function render_header(array $site, string $active): string
 function render_footer(array $site): string
 {
     $settings = $site['settings'];
+    $language = $site['language'] ?? DEFAULT_LANGUAGE;
 
     return '<footer class="site-footer">
     <div class="footer-grid">
@@ -87,10 +88,37 @@ function render_footer(array $site): string
       <section>
         <h2>Linkuri utile</h2>
         <p><a href="' . e($settings['anpcUrl']) . '" rel="noopener">' . e($settings['anpcLabel']) . '</a></p>
+        <p><a href="' . e(localized_path('/gdpr', $language)) . '">GDPR</a></p>
+        <p><a href="' . e(localized_path('/termene-si-conditii', $language)) . '">Termene si conditii</a></p>
+        <p><a href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">Politica privind datele personale</a></p>
+        <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">Informare drepturi persoane vizate</a></p>
+        <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">Politica de retentie date</a></p>
         <img class="anpc" src="/assets/anpc.webp" alt="ANPC">
       </section>
     </div>
   </footer>';
+}
+
+function published_posts_by_type(array $site, string $type): array
+{
+    return array_values(array_filter(
+        $site['posts'],
+        fn ($post) => ($post['source_type'] ?? '') === $type && !empty($post['published'])
+    ));
+}
+
+function render_link_card_grid(array $site, array $posts): string
+{
+    $html = '';
+    foreach ($posts as $post) {
+        $html .= '<article class="post-card">
+        <p class="eyebrow">' . e(format_date($post['date'])) . '</p>
+        <h3><a href="' . e(localized_path($post['path'] ?: '/blog/' . $post['slug'], $site['language'])) . '">' . e($post['title']) . '</a></h3>
+        <p>' . e($post['excerpt'] ?: plain_text($post['body'])) . '</p>
+      </article>';
+    }
+
+    return '<div class="card-grid">' . $html . '</div>';
 }
 
 function render_text_cards(array $items): string
@@ -109,6 +137,7 @@ function render_home(array $site): string
 {
     $page = $site['pages']['home'];
     $services = '';
+    $importedServices = published_posts_by_type($site, 'service');
 
     foreach ($page['services'] ?? [] as $service) {
         $services .= '<article class="service-card">
@@ -148,6 +177,10 @@ function render_home(array $site): string
       <p>' . e($page['servicesIntro'] ?? '') . '</p>
     </div>
     <div class="service-grid">' . $services . '</div>
+    ' . ($importedServices ? '<div class="section-heading section-heading-spaced">
+      <p class="eyebrow">Pagini servicii</p>
+      <h2>Toate serviciile importate</h2>
+    </div>' . render_link_card_grid($site, $importedServices) : '') . '
   </section>
   <section class="content-band muted">
     <div class="section-heading">
@@ -251,8 +284,8 @@ function render_blog(array $site): string
     $body = '<section class="page-hero">
     <div>
       <p class="eyebrow">Local Capital</p>
-      <h1>Noutati si informatii utile</h1>
-      <p>Articole scurte despre creditare, documente utile si decizii financiare mai clare.</p>
+      <h1>Continut importat si informatii utile</h1>
+      <p>Articole, servicii si studii de caz preluate din vechiul site.</p>
     </div>
   </section>
   <section class="content-band">
@@ -261,8 +294,31 @@ function render_blog(array $site): string
 
     return public_layout($site, $body, [
         'active' => 'blog',
-        'title' => 'Noutati',
-        'description' => 'Noutati si informatii utile Local Capital',
+        'title' => 'Continut importat',
+        'description' => 'Continut importat si informatii utile Local Capital',
+    ]);
+}
+
+function render_case_study_archive(array $site, string $category): string
+{
+    $posts = published_posts_by_type($site, 'case_study');
+    $title = label_from_key($category);
+
+    $body = '<section class="page-hero">
+    <div>
+      <p class="eyebrow">Case study</p>
+      <h1>' . e($title) . '</h1>
+      <p>Arhiva de studii de caz importata din vechiul site Local Capital.</p>
+    </div>
+  </section>
+  <section class="content-band">
+    ' . ($posts ? render_link_card_grid($site, $posts) : '<p>Nu exista studii de caz publicate momentan.</p>') . '
+  </section>';
+
+    return public_layout($site, $body, [
+        'active' => 'blog',
+        'title' => $title,
+        'description' => 'Arhiva de studii de caz Local Capital',
     ]);
 }
 

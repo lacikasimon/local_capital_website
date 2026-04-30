@@ -73,6 +73,12 @@ Create or update a local admin user:
 docker compose exec app sh -lc "ADMIN_PASSWORD='choose-a-long-password' php scripts/create-admin.php admin"
 ```
 
+Repair text that was imported through a wrong MySQL client charset:
+
+```sh
+docker compose exec app php scripts/repair-encoding.php
+```
+
 If you change `database/schema.sql` and want a clean database import:
 
 ```sh
@@ -89,6 +95,7 @@ node scripts/import-wordpress-content.js
 The importer currently pulls:
 
 - WordPress REST pages for `ro`, `en`, and `hu`
+- WordPress REST posts for `ro`, `en`, and `hu`
 - `finlon_service` entries
 - sitemap case study URLs
 - internal and external links found on the crawled pages

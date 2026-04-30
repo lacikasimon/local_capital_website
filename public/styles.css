@@ -262,6 +262,10 @@ h3 {
   color: var(--muted);
 }
 
+.section-heading-spaced {
+  margin-top: 34px;
+}
+
 .prose {
   max-width: 820px;
 }

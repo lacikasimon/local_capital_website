@@ -97,6 +97,42 @@ function e(mixed $value): string
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function repair_text_encoding(string $value): string
+{
+    static $replacements = null;
+
+    if ($replacements === null) {
+        $characters = 'ăĂâÂîÎșȘşŞțȚţŢáÁéÉíÍóÓöÖőŐúÚüÜűŰ–—‘’“”…• ';
+        $replacements = [];
+        foreach (preg_split('//u', $characters, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $character) {
+            $broken = @iconv('Windows-1252', 'UTF-8//IGNORE', $character);
+            if (is_string($broken) && $broken !== '' && $broken !== $character) {
+                $replacements[$broken] = $character;
+            }
+        }
+        $replacements += [
+            'Â ' => ' ',
+        ];
+    }
+
+    return strtr($value, $replacements);
+}
+
+function repair_data_encoding(mixed $value): mixed
+{
+    if (is_string($value)) {
+        return repair_text_encoding($value);
+    }
+
+    if (is_array($value)) {
+        foreach ($value as $key => $item) {
+            $value[$key] = repair_data_encoding($item);
+        }
+    }
+
+    return $value;
+}
+
 function slugify(string $value): string
 {
     $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
@@ -235,7 +271,7 @@ function load_site(string $language = DEFAULT_LANGUAGE): array
     $stmt = db()->prepare('SELECT setting_key, setting_value FROM settings WHERE language_code IN (?, ?) ORDER BY language_code = ? DESC');
     $stmt->execute([$language, DEFAULT_LANGUAGE, DEFAULT_LANGUAGE]);
     foreach ($stmt as $row) {
-        $settings[$row['setting_key']] = $row['setting_value'];
+        $settings[$row['setting_key']] = repair_text_encoding($row['setting_value']);
     }
 
     $stmt = db()->prepare('SELECT nav_key, label, path, visible FROM navigation WHERE language_code = ? ORDER BY sort_order ASC, id ASC');
@@ -247,7 +283,7 @@ function load_site(string $language = DEFAULT_LANGUAGE): array
     }
     $navigation = array_map(fn ($item) => [
         'key' => $item['nav_key'],
-        'label' => $item['label'],
+        'label' => repair_text_encoding($item['label']),
         'path' => $item['path'],
         'visible' => (bool) $item['visible'],
     ], $navigation);
@@ -262,21 +298,22 @@ function load_site(string $language = DEFAULT_LANGUAGE): array
     }
     foreach ($pageRows as $row) {
         $extra = json_decode($row['extra_json'] ?: '{}', true);
+        $extra = repair_data_encoding(is_array($extra) ? $extra : []);
         $pages[$row['page_key']] = array_merge([
             'path' => $row['path'],
-            'title' => $row['title'],
-            'summary' => $row['summary'],
-            'body' => $row['body'],
-            'ctaLabel' => $row['cta_label'],
+            'title' => repair_text_encoding($row['title']),
+            'summary' => repair_text_encoding($row['summary']),
+            'body' => repair_text_encoding($row['body']),
+            'ctaLabel' => $row['cta_label'] === null ? null : repair_text_encoding($row['cta_label']),
             'ctaHref' => $row['cta_href'],
-            'secondaryCtaLabel' => $row['secondary_cta_label'],
+            'secondaryCtaLabel' => $row['secondary_cta_label'] === null ? null : repair_text_encoding($row['secondary_cta_label']),
             'secondaryCtaHref' => $row['secondary_cta_href'],
-        ], is_array($extra) ? $extra : []);
+        ], $extra);
     }
 
     $stmt = db()->prepare('SELECT source_type, slug, path, source_url, title, post_date AS date, excerpt, body, published FROM posts WHERE language_code = ? ORDER BY post_date DESC, id DESC');
     $stmt->execute([$language]);
-    $posts = $stmt->fetchAll();
+    $posts = repair_data_encoding($stmt->fetchAll());
     $posts = array_map(fn ($post) => array_merge($post, [
         'published' => (bool) $post['published'],
     ]), $posts);

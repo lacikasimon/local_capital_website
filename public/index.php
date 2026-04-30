@@ -115,6 +115,11 @@ try {
         exit;
     }
 
+    if (preg_match('#^/finlon-case-study-category/([a-z0-9-]+)$#', $path, $match)) {
+        echo render_case_study_archive($site, $match[1]);
+        exit;
+    }
+
     [$key, $page] = page_by_path($site, $path);
     if (!$page) {
         http_response_code(404);

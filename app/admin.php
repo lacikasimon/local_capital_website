@@ -128,7 +128,7 @@ function render_links_inventory(array $site, array $admin): string
 {
     $stmt = db()->prepare('SELECT source_url, href, label, is_internal FROM site_links WHERE language_code = ? ORDER BY source_url ASC, is_internal DESC, href ASC');
     $stmt->execute([$site['language']]);
-    $rows = $stmt->fetchAll();
+    $rows = repair_data_encoding($stmt->fetchAll());
 
     $items = '';
     foreach ($rows as $row) {
@@ -273,7 +273,7 @@ function save_page(array $site, string $key): void
         $page['ctaHref'] ?? null,
         $page['secondaryCtaLabel'] ?? null,
         $page['secondaryCtaHref'] ?? null,
-        json_encode($extra, JSON_UNESCAPED_SLASHES),
+        json_encode($extra, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         $site['language'],
         $key,
     ]);
