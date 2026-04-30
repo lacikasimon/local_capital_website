@@ -12,6 +12,7 @@ return [
     'app' => [
         'base_url' => 'https://localcapital.ro',
         'session_name' => 'LC_ADMIN',
+        'form_secret' => 'change-this-random-form-secret',
         'debug' => false,
     ],
 ];

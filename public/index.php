@@ -50,6 +50,11 @@ try {
                 $slug = save_post($match[1]);
                 redirect('/admin/posts/' . $slug . '?lang=' . $adminLang . '&ok=1');
             }
+
+            if (preg_match('#^/admin/messages/([0-9]+)$#', $path, $match)) {
+                update_contact_message_status((int) $match[1]);
+                redirect('/admin/messages?lang=' . $adminLang . '&ok=1');
+            }
         }
 
         if ($path === '/admin') {
@@ -64,6 +69,11 @@ try {
 
         if ($path === '/admin/links') {
             echo render_links_inventory($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/messages') {
+            echo render_contact_messages($site, $admin);
             exit;
         }
 
@@ -84,15 +94,44 @@ try {
         }
 
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost gasita', 'Adresa ceruta nu exista.');
+        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
         exit;
     }
 
     $site = load_site($language);
 
+    if ($path === '/contact' && $method === 'POST') {
+        $result = save_contact_message($language, $_POST);
+        if ($result['ok']) {
+            redirect(localized_path('/contact', $language) . '?sent=1');
+        }
+
+        http_response_code(422);
+        echo render_contact($site, $result['errors'], $result['old']);
+        exit;
+    }
+
     if ($method !== 'GET') {
         http_response_code(405);
-        echo render_error_page('Metoda nepermisa', 'Aceasta pagina accepta doar citire.');
+        echo render_error_page('Metodă nepermisă', 'Această pagină acceptă doar citire.');
+        exit;
+    }
+
+    if ($path === '/robots.txt') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo render_robots_txt();
+        exit;
+    }
+
+    if ($path === '/llms.txt') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo render_llms_txt();
+        exit;
+    }
+
+    if ($path === '/sitemap.xml') {
+        header('Content-Type: application/xml; charset=utf-8');
+        echo render_sitemap_xml();
         exit;
     }
 
@@ -123,7 +162,7 @@ try {
     [$key, $page] = page_by_path($site, $path);
     if (!$page) {
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost gasita', 'Adresa ceruta nu exista.');
+        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
         exit;
     }
 
@@ -137,5 +176,5 @@ try {
 } catch (Throwable $error) {
     $debug = app_config()['app']['debug'] ?? false;
     http_response_code(500);
-    echo render_error_page('Eroare', $debug ? $error->getMessage() : 'A aparut o eroare. Te rugam sa incerci din nou.');
+    echo render_error_page('Eroare', $debug ? $error->getMessage() : 'A apărut o eroare. Te rugăm să încerci din nou.');
 }

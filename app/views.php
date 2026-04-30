@@ -9,7 +9,26 @@ function public_layout(array $site, string $body, array $options = []): string
     $title = ($options['title'] ?? null)
         ? $options['title'] . ' | ' . $settings['brandName']
         : $settings['brandName'] . ' | ' . $settings['tagline'];
-    $description = $options['description'] ?? $settings['footerText'];
+    $description = seo_description((string) ($options['description'] ?? $settings['footerText']));
+    $canonicalPath = $options['canonicalPath'] ?? current_request_path();
+    $canonical = absolute_url(localized_path($canonicalPath, $language));
+    $image = absolute_url($options['image'] ?? '/assets/hero-family.png');
+    $robots = $options['robots'] ?? 'index,follow';
+    $aiSummary = seo_description((string) ($options['aiSummary'] ?? $description));
+    $alternateLinks = '';
+    foreach (SUPPORTED_LANGUAGES as $code) {
+        $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="' . e($code) . '" href="' . e(absolute_url(localized_path($canonicalPath, $code))) . '">';
+    }
+    $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="x-default" href="' . e(absolute_url(localized_path($canonicalPath, DEFAULT_LANGUAGE))) . '">';
+    $structuredData = json_encode(build_structured_data($site, $options + [
+        'metaTitle' => $title,
+        'schemaTitle' => (string) ($options['title'] ?? $settings['brandName']),
+        'description' => $description,
+        'aiSummary' => $aiSummary,
+        'canonicalPath' => $canonicalPath,
+        'canonicalUrl' => $canonical,
+        'image' => $image,
+    ]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
     return '<!doctype html>
 <html lang="' . e($language) . '">
@@ -18,8 +37,24 @@ function public_layout(array $site, string $body, array $options = []): string
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>' . e($title) . '</title>
     <meta name="description" content="' . e($description) . '">
+    <meta name="ai-summary" content="' . e($aiSummary) . '">
+    <meta name="robots" content="' . e($robots) . '">
+    <link rel="canonical" href="' . e($canonical) . '">' . $alternateLinks . '
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="' . e(locale_for_language($language)) . '">
+    <meta property="og:site_name" content="' . e($settings['brandName']) . '">
+    <meta property="og:title" content="' . e($title) . '">
+    <meta property="og:description" content="' . e($description) . '">
+    <meta property="og:url" content="' . e($canonical) . '">
+    <meta property="og:image" content="' . e($image) . '">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="' . e($title) . '">
+    <meta name="twitter:description" content="' . e($description) . '">
+    <meta name="twitter:image" content="' . e($image) . '">
+    <link rel="alternate" type="text/plain" title="LLMs.txt" href="' . e(absolute_url('/llms.txt')) . '">
     <link rel="icon" href="/assets/logo.png">
     <link rel="stylesheet" href="/styles.css">
+    <script type="application/ld+json" nonce="' . e(csp_nonce()) . '">' . str_replace('</', '<\/', $structuredData ?: '{}') . '</script>
   </head>
   <body>
     ' . render_header($site, $options['active'] ?? '') . '
@@ -29,10 +64,378 @@ function public_layout(array $site, string $body, array $options = []): string
 </html>';
 }
 
+function ui_text(array $site, string $key): string
+{
+    static $strings = [
+        'ro' => [
+            'aria_main_nav' => 'Navigație principală',
+            'aria_language_nav' => 'Limbă',
+            'footer_schedule' => 'Program',
+            'footer_contact' => 'Contact',
+            'footer_links' => 'Linkuri utile',
+            'footer_terms' => 'Termene și condiții',
+            'footer_privacy' => 'Politica privind datele personale',
+            'footer_data_rights' => 'Informare drepturi persoane vizate',
+            'footer_retention' => 'Politica de retenție date',
+            'menu_toggle' => 'Meniu',
+            'trust_aria' => 'Avantaje rapide',
+            'trust_time_value' => '2 ore',
+            'trust_time_label' => 'transfer rapid după aprobare',
+            'trust_direct_value' => 'Direct',
+            'trust_direct_label' => 'bani transferați pe card',
+            'trust_ifn_value' => 'IFN',
+            'trust_ifn_label' => 'soluții flexibile pentru persoane fizice',
+            'home_advantages' => 'Avantaje',
+            'home_services' => 'Servicii',
+            'home_process' => 'Proces simplu',
+            'home_cta_title' => 'Ai nevoie de o soluție rapidă?',
+            'home_cta_text' => 'Trimite-ne un mesaj și revenim cu pașii potriviți pentru situația ta.',
+            'home_cta_button' => 'Contactează-ne',
+            'contact_success' => 'Mesajul a fost trimis. Îți vom răspunde în timpul programului de lucru.',
+            'contact_error_title' => 'Verifică formularul:',
+            'contact_eyebrow' => 'Contact',
+            'contact_form_title' => 'Trimite un mesaj',
+            'contact_honeypot' => 'Website',
+            'contact_name' => 'Nume',
+            'contact_email' => 'Email',
+            'contact_phone' => 'Telefon',
+            'contact_subject' => 'Subiect',
+            'contact_message' => 'Mesaj',
+            'contact_privacy' => 'Am citit informarea privind prelucrarea datelor personale.',
+            'contact_send' => 'Trimite',
+            'contact_facts' => 'Date de contact',
+            'contact_address' => 'Adresă',
+            'blog_title' => 'Conținut importat și informații utile',
+            'blog_intro' => 'Articole, servicii și studii de caz curățate din vechiul site.',
+            'blog_empty' => 'Nu există articole publicate momentan.',
+            'blog_page_title' => 'Conținut importat',
+            'blog_description' => 'Conținut importat și informații utile Local Capital',
+            'case_eyebrow' => 'Studiu de caz',
+            'case_intro' => 'Arhivă de studii de caz importată din vechiul site Local Capital.',
+            'case_empty' => 'Nu există studii de caz publicate momentan.',
+            'case_description' => 'Arhiva de studii de caz Local Capital',
+            'faq_eyebrow' => 'Întrebări frecvente',
+            'faq_title' => 'Răspunsuri utile pentru o decizie informată',
+        ],
+        'en' => [
+            'aria_main_nav' => 'Main navigation',
+            'aria_language_nav' => 'Language',
+            'footer_schedule' => 'Schedule',
+            'footer_contact' => 'Contact',
+            'footer_links' => 'Useful links',
+            'footer_terms' => 'Terms and conditions',
+            'footer_privacy' => 'Personal data policy',
+            'footer_data_rights' => 'Data subject rights notice',
+            'footer_retention' => 'Data retention policy',
+            'menu_toggle' => 'Menu',
+            'trust_aria' => 'Quick advantages',
+            'trust_time_value' => '2 hours',
+            'trust_time_label' => 'fast transfer after approval',
+            'trust_direct_value' => 'Direct',
+            'trust_direct_label' => 'money transferred to your card',
+            'trust_ifn_value' => 'IFN',
+            'trust_ifn_label' => 'flexible solutions for individuals',
+            'home_advantages' => 'Advantages',
+            'home_services' => 'Services',
+            'home_process' => 'Simple process',
+            'home_cta_title' => 'Need a fast solution?',
+            'home_cta_text' => 'Send us a message and we will get back with the right steps for your situation.',
+            'home_cta_button' => 'Contact us',
+            'contact_success' => 'Message sent. We will reply during business hours.',
+            'contact_error_title' => 'Check the form:',
+            'contact_eyebrow' => 'Contact',
+            'contact_form_title' => 'Send a message',
+            'contact_honeypot' => 'Website',
+            'contact_name' => 'Name',
+            'contact_email' => 'Email',
+            'contact_phone' => 'Phone',
+            'contact_subject' => 'Subject',
+            'contact_message' => 'Message',
+            'contact_privacy' => 'I have read the personal data processing notice.',
+            'contact_send' => 'Send',
+            'contact_facts' => 'Contact details',
+            'contact_address' => 'Address',
+            'blog_title' => 'Imported content and useful information',
+            'blog_intro' => 'Articles, services and case studies cleaned from the old website.',
+            'blog_empty' => 'There are no published articles at the moment.',
+            'blog_page_title' => 'Imported content',
+            'blog_description' => 'Imported Local Capital content and useful information',
+            'case_eyebrow' => 'Case study',
+            'case_intro' => 'Case study archive imported from the old Local Capital website.',
+            'case_empty' => 'There are no published case studies at the moment.',
+            'case_description' => 'Local Capital case study archive',
+            'faq_eyebrow' => 'Frequently asked questions',
+            'faq_title' => 'Useful answers for an informed decision',
+        ],
+        'hu' => [
+            'aria_main_nav' => 'Fő navigáció',
+            'aria_language_nav' => 'Nyelv',
+            'footer_schedule' => 'Nyitvatartás',
+            'footer_contact' => 'Kapcsolat',
+            'footer_links' => 'Hasznos linkek',
+            'footer_terms' => 'Általános szerződési feltételek',
+            'footer_privacy' => 'Személyes adatok kezelése',
+            'footer_data_rights' => 'Érintetti jogokról szóló tájékoztató',
+            'footer_retention' => 'Adatmegőrzési szabályzat',
+            'menu_toggle' => 'Menü',
+            'trust_aria' => 'Gyors előnyök',
+            'trust_time_value' => '2 óra',
+            'trust_time_label' => 'gyors utalás jóváhagyás után',
+            'trust_direct_value' => 'Közvetlenül',
+            'trust_direct_label' => 'pénz a kártyádra utalva',
+            'trust_ifn_value' => 'IFN',
+            'trust_ifn_label' => 'rugalmas megoldások magánszemélyeknek',
+            'home_advantages' => 'Előnyök',
+            'home_services' => 'Szolgáltatások',
+            'home_process' => 'Egyszerű folyamat',
+            'home_cta_title' => 'Gyors megoldásra van szükséged?',
+            'home_cta_text' => 'Írj nekünk, és visszajelzünk a helyzetedhez illő lépésekkel.',
+            'home_cta_button' => 'Kapcsolatfelvétel',
+            'contact_success' => 'Üzenetedet elküldtük. Munkaidőben válaszolunk.',
+            'contact_error_title' => 'Ellenőrizd az űrlapot:',
+            'contact_eyebrow' => 'Kapcsolat',
+            'contact_form_title' => 'Üzenet küldése',
+            'contact_honeypot' => 'Weboldal',
+            'contact_name' => 'Név',
+            'contact_email' => 'E-mail',
+            'contact_phone' => 'Telefon',
+            'contact_subject' => 'Tárgy',
+            'contact_message' => 'Üzenet',
+            'contact_privacy' => 'Elolvastam a személyes adatok kezeléséről szóló tájékoztatót.',
+            'contact_send' => 'Küldés',
+            'contact_facts' => 'Elérhetőségek',
+            'contact_address' => 'Cím',
+            'blog_title' => 'Importált tartalom és hasznos információk',
+            'blog_intro' => 'A régi oldalról megtisztított cikkek, szolgáltatások és esettanulmányok.',
+            'blog_empty' => 'Jelenleg nincs közzétett cikk.',
+            'blog_page_title' => 'Importált tartalom',
+            'blog_description' => 'Importált Local Capital tartalom és hasznos információk',
+            'case_eyebrow' => 'Esettanulmány',
+            'case_intro' => 'A régi Local Capital weboldalról importált esettanulmány-archívum.',
+            'case_empty' => 'Jelenleg nincs közzétett esettanulmány.',
+            'case_description' => 'Local Capital esettanulmány-archívum',
+            'faq_eyebrow' => 'Gyakori kérdések',
+            'faq_title' => 'Hasznos válaszok a megalapozott döntéshez',
+        ],
+    ];
+
+    $language = normalize_language($site['language'] ?? DEFAULT_LANGUAGE);
+    return $strings[$language][$key] ?? $strings[DEFAULT_LANGUAGE][$key] ?? $key;
+}
+
+function language_label(string $language): string
+{
+    return [
+        'ro' => 'Romanian',
+        'en' => 'English',
+        'hu' => 'Hungarian',
+    ][normalize_language($language)] ?? 'Romanian';
+}
+
+function schema_reference(string $fragment): array
+{
+    return ['@id' => absolute_url('/#' . ltrim($fragment, '#'))];
+}
+
+function normalized_faq_items(array $items): array
+{
+    $faq = [];
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $question = trim((string) ($item['question'] ?? $item['title'] ?? ''));
+        $answer = trim((string) ($item['answer'] ?? $item['text'] ?? ''));
+        if ($question === '' || $answer === '') {
+            continue;
+        }
+        $faq[] = compact('question', 'answer');
+    }
+    return $faq;
+}
+
+function build_breadcrumb_schema(array $site, string $canonicalPath, string $title): array
+{
+    $language = normalize_language($site['language'] ?? DEFAULT_LANGUAGE);
+    $items = [[
+        '@type' => 'ListItem',
+        'position' => 1,
+        'name' => $site['navigation'][0]['label'] ?? $site['settings']['brandName'],
+        'item' => absolute_url(localized_path('/', $language)),
+    ]];
+
+    if ($canonicalPath !== '/') {
+        $items[] = [
+            '@type' => 'ListItem',
+            'position' => 2,
+            'name' => $title,
+            'item' => absolute_url(localized_path($canonicalPath, $language)),
+        ];
+    }
+
+    return [
+        '@type' => 'BreadcrumbList',
+        '@id' => absolute_url(localized_path($canonicalPath, $language)) . '#breadcrumb',
+        'itemListElement' => $items,
+    ];
+}
+
+function build_structured_data(array $site, array $options): array
+{
+    $settings = $site['settings'];
+    $language = normalize_language($site['language'] ?? DEFAULT_LANGUAGE);
+    $canonicalPath = (string) ($options['canonicalPath'] ?? '/');
+    $canonicalUrl = (string) ($options['canonicalUrl'] ?? absolute_url(localized_path($canonicalPath, $language)));
+    $title = (string) ($options['schemaTitle'] ?? $options['title'] ?? $settings['brandName']);
+    $description = (string) ($options['description'] ?? $settings['footerText']);
+    $image = (string) ($options['image'] ?? absolute_url('/assets/hero-family.png'));
+    $faqItems = normalized_faq_items($options['faqItems'] ?? []);
+    $servicePosts = published_posts_by_type($site, 'service');
+    $organizationId = schema_reference('organization');
+    $websiteId = schema_reference('website');
+    $webPageId = $canonicalUrl . '#webpage';
+    $pageType = (string) ($options['webPageType'] ?? 'WebPage');
+
+    $organization = [
+        '@type' => ['Organization', 'FinancialService'],
+        '@id' => $organizationId['@id'],
+        'name' => $settings['brandName'],
+        'legalName' => $settings['legalName'] ?? $settings['brandName'],
+        'url' => app_base_url(),
+        'logo' => absolute_url('/assets/logo.png'),
+        'image' => $image,
+        'telephone' => $settings['phone'] ?? '',
+        'email' => $settings['email'] ?? '',
+        'address' => [
+            '@type' => 'PostalAddress',
+            'streetAddress' => 'Str. Vasile Lucaciu nr. 3',
+            'addressLocality' => 'Satu Mare',
+            'addressCountry' => 'RO',
+        ],
+        'areaServed' => [
+            '@type' => 'Country',
+            'name' => 'Romania',
+        ],
+        'availableLanguage' => array_map('language_label', SUPPORTED_LANGUAGES),
+        'openingHoursSpecification' => [[
+            '@type' => 'OpeningHoursSpecification',
+            'dayOfWeek' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+            'opens' => '09:00',
+            'closes' => '17:00',
+        ]],
+        'contactPoint' => [[
+            '@type' => 'ContactPoint',
+            'telephone' => $settings['phone'] ?? '',
+            'email' => $settings['email'] ?? '',
+            'contactType' => 'customer support',
+            'areaServed' => 'RO',
+            'availableLanguage' => array_map('language_label', SUPPORTED_LANGUAGES),
+        ]],
+    ];
+
+    if ($servicePosts) {
+        $organization['hasOfferCatalog'] = [
+            '@type' => 'OfferCatalog',
+            'name' => $settings['brandName'] . ' credit services',
+            'itemListElement' => array_map(fn ($post) => [
+                '@type' => 'Offer',
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => $post['title'],
+                    'description' => $post['excerpt'] ?: plain_text($post['body']),
+                    'url' => absolute_url(localized_path($post['path'] ?: '/blog/' . $post['slug'], $language)),
+                    'provider' => $organizationId,
+                ],
+            ], $servicePosts),
+        ];
+    }
+
+    $graph = [
+        $organization,
+        [
+            '@type' => 'WebSite',
+            '@id' => $websiteId['@id'],
+            'url' => app_base_url(),
+            'name' => $settings['brandName'],
+            'description' => $settings['footerText'] ?? $description,
+            'inLanguage' => $language,
+            'publisher' => $organizationId,
+        ],
+        [
+            '@type' => $pageType,
+            '@id' => $webPageId,
+            'url' => $canonicalUrl,
+            'name' => $title,
+            'headline' => $title,
+            'description' => $description,
+            'inLanguage' => $language,
+            'isPartOf' => $websiteId,
+            'about' => $organizationId,
+            'publisher' => $organizationId,
+            'breadcrumb' => ['@id' => $canonicalUrl . '#breadcrumb'],
+            'primaryImageOfPage' => [
+                '@type' => 'ImageObject',
+                'url' => $image,
+            ],
+        ],
+        build_breadcrumb_schema($site, $canonicalPath, $title),
+    ];
+
+    if (($options['schemaType'] ?? '') === 'Article') {
+        $graph[] = [
+            '@type' => 'Article',
+            '@id' => $canonicalUrl . '#article',
+            'headline' => $title,
+            'description' => $description,
+            'datePublished' => $options['datePublished'] ?? null,
+            'dateModified' => $options['dateModified'] ?? $options['datePublished'] ?? null,
+            'inLanguage' => $language,
+            'mainEntityOfPage' => ['@id' => $webPageId],
+            'author' => $organizationId,
+            'publisher' => $organizationId,
+            'image' => $image,
+        ];
+    }
+
+    if (($options['schemaType'] ?? '') === 'Service') {
+        $graph[] = [
+            '@type' => 'Service',
+            '@id' => $canonicalUrl . '#service',
+            'name' => $title,
+            'description' => $description,
+            'url' => $canonicalUrl,
+            'provider' => $organizationId,
+            'areaServed' => ['@type' => 'Country', 'name' => 'Romania'],
+            'serviceType' => 'Credit service',
+        ];
+    }
+
+    if ($faqItems) {
+        $graph[] = [
+            '@type' => 'FAQPage',
+            '@id' => $canonicalUrl . '#faq',
+            'mainEntity' => array_map(fn ($item) => [
+                '@type' => 'Question',
+                'name' => $item['question'],
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $item['answer'],
+                ],
+            ], $faqItems),
+        ];
+    }
+
+    return [
+        '@context' => 'https://schema.org',
+        '@graph' => array_values(array_filter($graph)),
+    ];
+}
+
 function render_header(array $site, string $active): string
 {
     $settings = $site['settings'];
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
+    $menuId = 'site-menu-toggle';
     $links = '';
 
     foreach ($site['navigation'] as $item) {
@@ -57,8 +460,15 @@ function render_header(array $site, string $active): string
         <small>' . e($settings['tagline']) . '</small>
       </span>
     </a>
-    <nav aria-label="Navigatie principala">' . $links . '</nav>
-    <nav class="language-nav" aria-label="Language">' . $languageLinks . '</nav>
+    <input class="menu-toggle-input" id="' . e($menuId) . '" type="checkbox" aria-label="' . e(ui_text($site, 'menu_toggle')) . '">
+    <label class="menu-toggle" for="' . e($menuId) . '">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span class="sr-only">' . e(ui_text($site, 'menu_toggle')) . '</span>
+    </label>
+    <nav class="main-nav" aria-label="' . e(ui_text($site, 'aria_main_nav')) . '">' . $links . '</nav>
+    <nav class="language-nav" aria-label="' . e(ui_text($site, 'aria_language_nav')) . '">' . $languageLinks . '</nav>
     <a class="header-contact" href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">' . e($settings['phone']) . '</a>
   </header>';
 }
@@ -75,24 +485,24 @@ function render_footer(array $site): string
         <p>' . e($settings['footerText']) . '</p>
       </section>
       <section>
-        <h2>Program</h2>
+        <h2>' . e(ui_text($site, 'footer_schedule')) . '</h2>
         <p>' . e($settings['workingHours']) . '</p>
         <p>' . e($settings['closedHours']) . '</p>
       </section>
       <section>
-        <h2>Contact</h2>
+        <h2>' . e(ui_text($site, 'footer_contact')) . '</h2>
         <p><a href="mailto:' . e($settings['email']) . '">' . e($settings['email']) . '</a></p>
         <p><a href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">' . e($settings['phone']) . '</a></p>
         <p>' . e($settings['address']) . '</p>
       </section>
       <section>
-        <h2>Linkuri utile</h2>
+        <h2>' . e(ui_text($site, 'footer_links')) . '</h2>
         <p><a href="' . e($settings['anpcUrl']) . '" rel="noopener">' . e($settings['anpcLabel']) . '</a></p>
         <p><a href="' . e(localized_path('/gdpr', $language)) . '">GDPR</a></p>
-        <p><a href="' . e(localized_path('/termene-si-conditii', $language)) . '">Termene si conditii</a></p>
-        <p><a href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">Politica privind datele personale</a></p>
-        <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">Informare drepturi persoane vizate</a></p>
-        <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">Politica de retentie date</a></p>
+        <p><a href="' . e(localized_path('/termene-si-conditii', $language)) . '">' . e(ui_text($site, 'footer_terms')) . '</a></p>
+        <p><a href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">' . e(ui_text($site, 'footer_privacy')) . '</a></p>
+        <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">' . e(ui_text($site, 'footer_data_rights')) . '</a></p>
+        <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">' . e(ui_text($site, 'footer_retention')) . '</a></p>
         <img class="anpc" src="/assets/anpc.webp" alt="ANPC">
       </section>
     </div>
@@ -133,11 +543,40 @@ function render_text_cards(array $items): string
     return $html;
 }
 
+function render_faq_section(array $site, array $items): string
+{
+    $faqItems = normalized_faq_items($items);
+    if (!$faqItems) {
+        return '';
+    }
+
+    $html = '';
+    foreach ($faqItems as $item) {
+        $html .= '<details class="faq-item">
+        <summary>' . e($item['question']) . '</summary>
+        <p>' . e($item['answer']) . '</p>
+      </details>';
+    }
+
+    return '<section class="content-band faq-band">
+    <div class="section-heading">
+      <p class="eyebrow">' . e(ui_text($site, 'faq_eyebrow')) . '</p>
+      <h2>' . e(ui_text($site, 'faq_title')) . '</h2>
+    </div>
+    <div class="faq-list">' . $html . '</div>
+  </section>';
+}
+
 function render_home(array $site): string
 {
     $page = $site['pages']['home'];
     $services = '';
-    $importedServices = published_posts_by_type($site, 'service');
+    $trustItems = [
+        ['value' => ui_text($site, 'trust_time_value'), 'label' => ui_text($site, 'trust_time_label')],
+        ['value' => ui_text($site, 'trust_direct_value'), 'label' => ui_text($site, 'trust_direct_label')],
+        ['value' => ui_text($site, 'trust_ifn_value'), 'label' => ui_text($site, 'trust_ifn_label')],
+    ];
+    $trust = '';
 
     foreach ($page['services'] ?? [] as $service) {
         $services .= '<article class="service-card">
@@ -147,6 +586,10 @@ function render_home(array $site): string
           <p>' . e($service['text'] ?? '') . '</p>
         </div>
       </article>';
+    }
+
+    foreach ($trustItems as $item) {
+        $trust .= '<div><strong>' . e($item['value']) . '</strong><span>' . e($item['label']) . '</span></div>';
     }
 
     $body = '<section class="hero home-hero">
@@ -160,40 +603,51 @@ function render_home(array $site): string
       </div>
     </div>
   </section>
+  <section class="trust-strip" aria-label="' . e(ui_text($site, 'trust_aria')) . '">
+    ' . $trust . '
+  </section>
   <section class="content-band">
     <div class="prose">' . render_markdown($page['body']) . '</div>
   </section>
   <section class="content-band muted">
     <div class="section-heading">
-      <p class="eyebrow">Avantaje</p>
-      <h2>' . e($page['featuresTitle'] ?? 'Avantaje') . '</h2>
+      <p class="eyebrow">' . e(ui_text($site, 'home_advantages')) . '</p>
+      <h2>' . e($page['featuresTitle'] ?? ui_text($site, 'home_advantages')) . '</h2>
     </div>
     <div class="card-grid">' . render_text_cards($page['features'] ?? []) . '</div>
   </section>
   <section class="content-band">
     <div class="section-heading">
-      <p class="eyebrow">Servicii</p>
-      <h2>' . e($page['servicesTitle'] ?? 'Servicii') . '</h2>
+      <p class="eyebrow">' . e(ui_text($site, 'home_services')) . '</p>
+      <h2>' . e($page['servicesTitle'] ?? ui_text($site, 'home_services')) . '</h2>
       <p>' . e($page['servicesIntro'] ?? '') . '</p>
     </div>
     <div class="service-grid">' . $services . '</div>
-    ' . ($importedServices ? '<div class="section-heading section-heading-spaced">
-      <p class="eyebrow">Pagini servicii</p>
-      <h2>Toate serviciile importate</h2>
-    </div>' . render_link_card_grid($site, $importedServices) : '') . '
   </section>
   <section class="content-band muted">
     <div class="section-heading">
-      <p class="eyebrow">Proces simplu</p>
+      <p class="eyebrow">' . e(ui_text($site, 'home_process')) . '</p>
       <h2>' . e($page['requirementsTitle'] ?? 'De ce ai nevoie') . '</h2>
     </div>
     <div class="card-grid">' . render_text_cards($page['requirements'] ?? []) . '</div>
+  </section>
+  ' . render_faq_section($site, $page['faq'] ?? []) . '
+  <section class="cta-band">
+    <div>
+      <p class="eyebrow">Local Capital</p>
+      <h2>' . e(ui_text($site, 'home_cta_title')) . '</h2>
+      <p>' . e(ui_text($site, 'home_cta_text')) . '</p>
+    </div>
+    <a class="button" href="' . e(localized_path('/contact', $site['language'])) . '">' . e(ui_text($site, 'home_cta_button')) . '</a>
   </section>';
 
     return public_layout($site, $body, [
         'active' => 'home',
         'title' => $page['title'],
         'description' => $page['summary'],
+        'aiSummary' => $page['aiSummary'] ?? $page['summary'],
+        'faqItems' => $page['faq'] ?? [],
+        'canonicalPath' => '/',
     ]);
 }
 
@@ -216,24 +670,39 @@ function render_generic_page(array $site, string $key, array $page): string
   <section class="content-band">
     <div class="prose">' . render_markdown($page['body']) . '</div>
     ' . $extra . '
-  </section>';
+  </section>
+  ' . render_faq_section($site, $page['faq'] ?? []);
 
     return public_layout($site, $body, [
         'active' => $key,
         'title' => $page['title'],
         'description' => $page['summary'],
+        'aiSummary' => $page['aiSummary'] ?? $page['summary'],
+        'faqItems' => $page['faq'] ?? [],
+        'webPageType' => $key === 'about' ? 'AboutPage' : 'WebPage',
+        'canonicalPath' => $page['path'] ?? current_request_path(),
     ]);
 }
 
-function render_contact(array $site): string
+function render_contact(array $site, array $errors = [], array $old = []): string
 {
     $settings = $site['settings'];
     $page = $site['pages']['contact'];
-    $subject = rawurlencode('Solicitare Local Capital');
+    $sent = ($_GET['sent'] ?? '') === '1';
+    $message = '';
+    if ($sent) {
+        $message = '<p class="form-message success">' . e(ui_text($site, 'contact_success')) . '</p>';
+    } elseif ($errors) {
+        $items = '';
+        foreach ($errors as $error) {
+            $items .= '<li>' . e($error) . '</li>';
+        }
+        $message = '<div class="form-message error"><strong>' . e(ui_text($site, 'contact_error_title')) . '</strong><ul>' . $items . '</ul></div>';
+    }
 
     $body = '<section class="page-hero">
     <div>
-      <p class="eyebrow">Contact</p>
+      <p class="eyebrow">' . e(ui_text($site, 'contact_eyebrow')) . '</p>
       <h1>' . e($page['title']) . '</h1>
       <p>' . e($page['summary']) . '</p>
     </div>
@@ -241,22 +710,27 @@ function render_contact(array $site): string
   <section class="contact-layout">
     <div class="prose">' . render_markdown($page['body']) . '</div>
     <div class="contact-panel">
-      <h2>' . e($page['formTitle'] ?? 'Trimite un mesaj') . '</h2>
-      <form action="mailto:' . e($settings['email']) . '?subject=' . e($subject) . '" method="post" enctype="text/plain">
-        <label>Nume <input name="Nume" autocomplete="name" required></label>
-        <label>Email <input name="Email" type="email" autocomplete="email" required></label>
-        <label>Subiect <input name="Subiect" required></label>
-        <label>Mesaj <textarea name="Mesaj" rows="6" required></textarea></label>
-        <button class="button" type="submit">Trimite</button>
+      <h2>' . e($page['formTitle'] ?? ui_text($site, 'contact_form_title')) . '</h2>
+      ' . $message . '
+      <form action="' . e(localized_path('/contact', $site['language'])) . '" method="post">
+        <input type="hidden" name="contact_token" value="' . e(contact_form_token()) . '">
+        <label class="hidden-field">' . e(ui_text($site, 'contact_honeypot')) . ' <input name="website" tabindex="-1" autocomplete="off"></label>
+        <label>' . e(ui_text($site, 'contact_name')) . ' <input name="name" autocomplete="name" maxlength="160" value="' . e($old['name'] ?? '') . '" required></label>
+        <label>' . e(ui_text($site, 'contact_email')) . ' <input name="email" type="email" autocomplete="email" maxlength="190" value="' . e($old['email'] ?? '') . '" required></label>
+        <label>' . e(ui_text($site, 'contact_phone')) . ' <input name="phone" autocomplete="tel" maxlength="60" value="' . e($old['phone'] ?? '') . '"></label>
+        <label>' . e(ui_text($site, 'contact_subject')) . ' <input name="subject" maxlength="220" value="' . e($old['subject'] ?? '') . '" required></label>
+        <label>' . e(ui_text($site, 'contact_message')) . ' <textarea name="message" rows="6" maxlength="4000" required>' . e($old['message'] ?? '') . '</textarea></label>
+        <label class="checkbox privacy-check"><input name="privacy" type="checkbox" value="1" ' . (!empty($old['privacy']) ? 'checked' : '') . ' required> ' . e(ui_text($site, 'contact_privacy')) . '</label>
+        <button class="button" type="submit">' . e(ui_text($site, 'contact_send')) . '</button>
       </form>
       <p class="privacy">' . e($page['privacyNote'] ?? '') . '</p>
     </div>
     <aside class="contact-facts">
-      <h2>Date de contact</h2>
-      <p><strong>Telefon</strong><br><a href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">' . e($settings['phone']) . '</a></p>
-      <p><strong>Email</strong><br><a href="mailto:' . e($settings['email']) . '">' . e($settings['email']) . '</a></p>
-      <p><strong>Adresa</strong><br>' . e($settings['address']) . '</p>
-      <p><strong>Program</strong><br>' . e($settings['workingHours']) . '<br>' . e($settings['closedHours']) . '</p>
+      <h2>' . e(ui_text($site, 'contact_facts')) . '</h2>
+      <p><strong>' . e(ui_text($site, 'contact_phone')) . '</strong><br><a href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">' . e($settings['phone']) . '</a></p>
+      <p><strong>' . e(ui_text($site, 'contact_email')) . '</strong><br><a href="mailto:' . e($settings['email']) . '">' . e($settings['email']) . '</a></p>
+      <p><strong>' . e(ui_text($site, 'contact_address')) . '</strong><br>' . e($settings['address']) . '</p>
+      <p><strong>' . e(ui_text($site, 'footer_schedule')) . '</strong><br>' . e($settings['workingHours']) . '<br>' . e($settings['closedHours']) . '</p>
     </aside>
   </section>';
 
@@ -264,6 +738,10 @@ function render_contact(array $site): string
         'active' => 'contact',
         'title' => $page['title'],
         'description' => $page['summary'],
+        'aiSummary' => $page['aiSummary'] ?? $page['summary'],
+        'faqItems' => $page['faq'] ?? [],
+        'webPageType' => 'ContactPage',
+        'canonicalPath' => '/contact',
     ]);
 }
 
@@ -284,18 +762,19 @@ function render_blog(array $site): string
     $body = '<section class="page-hero">
     <div>
       <p class="eyebrow">Local Capital</p>
-      <h1>Continut importat si informatii utile</h1>
-      <p>Articole, servicii si studii de caz preluate din vechiul site.</p>
+      <h1>' . e(ui_text($site, 'blog_title')) . '</h1>
+      <p>' . e(ui_text($site, 'blog_intro')) . '</p>
     </div>
   </section>
   <section class="content-band">
-    <div class="post-list">' . ($posts ?: '<p>Nu exista articole publicate momentan.</p>') . '</div>
+    <div class="post-list">' . ($posts ?: '<p>' . e(ui_text($site, 'blog_empty')) . '</p>') . '</div>
   </section>';
 
     return public_layout($site, $body, [
         'active' => 'blog',
-        'title' => 'Continut importat',
-        'description' => 'Continut importat si informatii utile Local Capital',
+        'title' => ui_text($site, 'blog_page_title'),
+        'description' => ui_text($site, 'blog_description'),
+        'canonicalPath' => '/blog',
     ]);
 }
 
@@ -306,19 +785,41 @@ function render_case_study_archive(array $site, string $category): string
 
     $body = '<section class="page-hero">
     <div>
-      <p class="eyebrow">Case study</p>
+      <p class="eyebrow">' . e(ui_text($site, 'case_eyebrow')) . '</p>
       <h1>' . e($title) . '</h1>
-      <p>Arhiva de studii de caz importata din vechiul site Local Capital.</p>
+      <p>' . e(ui_text($site, 'case_intro')) . '</p>
     </div>
   </section>
   <section class="content-band">
-    ' . ($posts ? render_link_card_grid($site, $posts) : '<p>Nu exista studii de caz publicate momentan.</p>') . '
+    ' . ($posts ? render_link_card_grid($site, $posts) : '<p>' . e(ui_text($site, 'case_empty')) . '</p>') . '
   </section>';
 
     return public_layout($site, $body, [
         'active' => 'blog',
         'title' => $title,
-        'description' => 'Arhiva de studii de caz Local Capital',
+        'description' => ui_text($site, 'case_description'),
+        'canonicalPath' => '/finlon-case-study-category/' . $category,
+    ]);
+}
+
+function render_post_article(array $site, array $post): string
+{
+    $body = '<article class="article">
+    <p class="eyebrow">' . e(format_date($post['date'])) . '</p>
+    <h1>' . e($post['title']) . '</h1>
+    <p class="lead">' . e($post['excerpt']) . '</p>
+    <div class="prose">' . render_markdown($post['body']) . '</div>
+  </article>';
+
+    return public_layout($site, $body, [
+        'active' => 'blog',
+        'title' => $post['title'],
+        'description' => $post['excerpt'] ?: plain_text($post['body']),
+        'aiSummary' => $post['excerpt'] ?: plain_text($post['body']),
+        'schemaType' => ($post['source_type'] ?? '') === 'service' ? 'Service' : 'Article',
+        'webPageType' => ($post['source_type'] ?? '') === 'service' ? 'ItemPage' : 'Article',
+        'datePublished' => $post['date'] ?? null,
+        'canonicalPath' => $post['path'] ?: '/blog/' . $post['slug'],
     ]);
 }
 
@@ -329,18 +830,7 @@ function render_post(array $site, string $slug): ?string
             continue;
         }
 
-        $body = '<article class="article">
-    <p class="eyebrow">' . e(format_date($post['date'])) . '</p>
-    <h1>' . e($post['title']) . '</h1>
-    <p class="lead">' . e($post['excerpt']) . '</p>
-    <div class="prose">' . render_markdown($post['body']) . '</div>
-  </article>';
-
-        return public_layout($site, $body, [
-            'active' => 'blog',
-            'title' => $post['title'],
-            'description' => $post['excerpt'] ?: plain_text($post['body']),
-        ]);
+        return render_post_article($site, $post);
     }
 
     return null;
@@ -353,7 +843,7 @@ function render_post_by_path(array $site, string $path): ?string
             continue;
         }
 
-        return render_post($site, $post['slug']);
+        return render_post_article($site, $post);
     }
 
     return null;
@@ -367,14 +857,160 @@ function render_error_page(string $title, string $message): string
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>' . e($title) . '</title>
+    <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <main class="error-page">
       <h1>' . e($title) . '</h1>
       <p>' . e($message) . '</p>
-      <a class="button" href="/">Inapoi la prima pagina</a>
+      <a class="button" href="/">Înapoi la prima pagină</a>
     </main>
   </body>
 </html>';
+}
+
+function render_robots_txt(): string
+{
+    $privateRules = "Allow: /\n"
+        . "Allow: /llms.txt\n"
+        . "Disallow: /admin/\n"
+        . "Disallow: /config/\n"
+        . "Disallow: /database/\n"
+        . "Disallow: /scripts/\n";
+    $aiBots = ['GPTBot', 'ChatGPT-User', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'];
+    $robots = "User-agent: *\n" . $privateRules . "\n";
+
+    foreach ($aiBots as $bot) {
+        $robots .= "User-agent: " . $bot . "\n" . $privateRules . "\n";
+    }
+
+    return $robots
+        . "# AI discovery: " . absolute_url('/llms.txt') . "\n"
+        . "Sitemap: " . absolute_url('/sitemap.xml') . "\n";
+}
+
+function render_llms_txt(): string
+{
+    $lines = [
+        '# Local Capital',
+        '',
+        '> LOCAL CAPITAL IFN S.A. is a Romanian non-bank financial institution offering simple and fast credit solutions for personal needs.',
+        '',
+        'Canonical site: ' . app_base_url(),
+        'Sitemap: ' . absolute_url('/sitemap.xml'),
+        'Primary AI-readable file: ' . absolute_url('/llms.txt'),
+        'Contact: info@localcapital.ro, 0318 110 001',
+        'Languages: Romanian (ro), English (en), Hungarian (hu)',
+        '',
+        '## AI usage notes',
+        '- This file summarizes public website content for search engines and AI answer engines.',
+        '- Do not treat website content as a guaranteed credit approval or as personalized financial advice.',
+        '- For legal pages, the official maintained legal text is Romanian unless Local Capital publishes an authorized translation.',
+        '- Private admin URLs and source folders are excluded from indexing.',
+        '',
+    ];
+
+    foreach (SUPPORTED_LANGUAGES as $language) {
+        $site = load_site($language);
+        $home = $site['pages']['home'] ?? [];
+        $lines[] = '## ' . language_label($language) . ' content (' . $language . ')';
+        if ($home) {
+            $lines[] = '- Home: ' . absolute_url(localized_path('/', $language)) . ' - ' . plain_text((string) ($home['summary'] ?? ''), 240);
+        }
+
+        foreach (['about', 'contract', 'contact'] as $key) {
+            if (empty($site['pages'][$key])) {
+                continue;
+            }
+            $page = $site['pages'][$key];
+            $lines[] = '- ' . $page['title'] . ': ' . absolute_url(localized_path($page['path'] ?? '/', $language)) . ' - ' . plain_text((string) ($page['summary'] ?? ''), 240);
+        }
+
+        $servicePosts = published_posts_by_type($site, 'service');
+        if ($servicePosts) {
+            $lines[] = '';
+            $lines[] = '### Credit services';
+            foreach ($servicePosts as $post) {
+                $path = $post['path'] ?: '/blog/' . $post['slug'];
+                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path($path, $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
+            }
+        }
+
+        $articles = array_values(array_filter(
+            $site['posts'],
+            fn ($post) => ($post['source_type'] ?? '') === 'post' && !empty($post['published'])
+        ));
+        if ($articles) {
+            $lines[] = '';
+            $lines[] = '### Articles';
+            foreach ($articles as $post) {
+                $path = $post['path'] ?: '/blog/' . $post['slug'];
+                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path($path, $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
+            }
+        }
+
+        $legalPages = array_intersect_key($site['pages'], array_flip(['gdpr', 'privacy', 'terms']));
+        if ($legalPages) {
+            $lines[] = '';
+            $lines[] = '### Legal and policy pages';
+            foreach ($legalPages as $page) {
+                $lines[] = '- ' . $page['title'] . ': ' . absolute_url(localized_path($page['path'] ?? '/', $language));
+            }
+        }
+        $lines[] = '';
+    }
+
+    return implode("\n", $lines) . "\n";
+}
+
+function sitemap_paths_for_site(array $site): array
+{
+    $paths = ['/'];
+
+    foreach ($site['pages'] as $page) {
+        $paths[] = $page['path'] ?? '/';
+    }
+
+    $paths[] = '/blog';
+    $paths[] = '/finlon-case-study-category/business';
+
+    foreach ($site['posts'] as $post) {
+        if (!empty($post['published'])) {
+            $paths[] = $post['path'] ?: '/blog/' . $post['slug'];
+        }
+    }
+
+    $paths = array_values(array_unique(array_filter($paths)));
+    sort($paths);
+    return $paths;
+}
+
+function render_sitemap_xml(): string
+{
+    $entries = [];
+    foreach (SUPPORTED_LANGUAGES as $language) {
+        $site = load_site($language);
+        foreach (sitemap_paths_for_site($site) as $path) {
+            $entries[$path] = true;
+        }
+    }
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' . "\n";
+
+    foreach (array_keys($entries) as $path) {
+        foreach (SUPPORTED_LANGUAGES as $language) {
+            $url = absolute_url(localized_path($path, $language));
+            $xml .= "  <url>\n";
+            $xml .= '    <loc>' . e($url) . "</loc>\n";
+            foreach (SUPPORTED_LANGUAGES as $alternate) {
+                $xml .= '    <xhtml:link rel="alternate" hreflang="' . e($alternate) . '" href="' . e(absolute_url(localized_path($path, $alternate))) . "\" />\n";
+            }
+            $xml .= '    <xhtml:link rel="alternate" hreflang="x-default" href="' . e(absolute_url(localized_path($path, DEFAULT_LANGUAGE))) . "\" />\n";
+            $xml .= "  </url>\n";
+        }
+    }
+
+    return $xml . "</urlset>\n";
 }

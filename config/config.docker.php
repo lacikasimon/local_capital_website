@@ -12,6 +12,7 @@ return [
     'app' => [
         'base_url' => getenv('APP_BASE_URL') ?: 'http://localhost:8080',
         'session_name' => 'LC_ADMIN_DOCKER',
+        'form_secret' => getenv('APP_FORM_SECRET') ?: 'localcapital-docker-form-secret',
         'debug' => true,
     ],
 ];

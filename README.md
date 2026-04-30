@@ -16,15 +16,17 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 - `config/config.php` contains database credentials and is ignored by git.
 - `database/schema.sql` creates tables and seed content.
 - `database/imported-wordpress.sql` contains the crawled WordPress pages, services, case studies, and link inventory.
+- `database/content-overrides.sql` cleans imported pages, services, and case studies into structured, non-repeating sections based on the original WordPress content.
 - `scripts/import-wordpress-content.js` regenerates the WordPress import SQL from the current public site.
 - `public/downloads/` stores downloaded PDF documents linked from the old site.
 - `scripts/create-admin.php` creates or updates admin users.
 - Root `.htaccess` protects private folders if the whole project is uploaded to a shared hosting document root.
+- Contact form submissions are stored in the `contact_messages` table and can be reviewed from the admin area.
 
 ## Install
 
 1. Create a MySQL database and user.
-2. Import `database/schema.sql`, then `database/imported-wordpress.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
+2. Import `database/schema.sql`, then `database/imported-wordpress.sql`, then `database/content-overrides.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
 3. Copy the config file:
 
 ```sh
@@ -32,6 +34,7 @@ cp config/config.example.php config/config.php
 ```
 
 4. Edit `config/config.php` with the database credentials.
+   Also set a long random `app.form_secret`; it signs public contact form tokens and IP hashes.
 5. Point Apache document root to the `public/` directory when the hosting panel allows it. If not, upload the whole project and keep the root `.htaccess` file.
 6. Create the admin user:
 
@@ -103,6 +106,15 @@ The importer currently pulls:
 The source site currently exposes the same page set through the language REST filters, while `/ro/` and `/hu/` return sparse WordPress archive/not-found pages. The importer still creates language rows so the new CMS can be edited per language from `/admin?lang=ro`, `/admin?lang=en`, and `/admin?lang=hu`.
 
 Imported links can be reviewed from `/admin/links?lang=ro`, `/admin/links?lang=en`, and `/admin/links?lang=hu`.
+Contact messages can be reviewed from `/admin/messages?lang=ro`, `/admin/messages?lang=en`, and `/admin/messages?lang=hu`.
+
+## SEO and AI discovery
+
+- `/sitemap.xml` exposes all public language variants with `hreflang` alternates.
+- `/robots.txt` points crawlers to the sitemap and allows public AI crawler access while blocking admin and source folders.
+- `/llms.txt` provides an AI-readable public summary of the company, languages, key pages, services, articles, and policy pages.
+- Public pages include canonical URLs, Open Graph, Twitter card metadata, `ai-summary`, and Schema.org JSON-LD `@graph` data.
+- Page FAQ content stored in `extra_json` is rendered visibly and emitted as `FAQPage` structured data.
 
 ## Security notes
 
@@ -110,5 +122,6 @@ Imported links can be reviewed from `/admin/links?lang=ro`, `/admin/links?lang=e
 - Admin passwords use PHP `password_hash`.
 - Admin sessions use HttpOnly cookies.
 - Admin writes use CSRF tokens.
+- The public contact form uses a signed time-limited token, honeypot field, and IP-hash rate limiting before storing messages.
 - Security headers are sent by PHP and partially mirrored in `public/.htaccess`.
 - Keep `config/config.php` outside git and back up the MySQL database.

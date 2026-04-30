@@ -3,7 +3,8 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
-  RewriteRule ^(\.git|app|config|database|scripts)(/|$) - [F,L]
+  RewriteRule ^(\.git|app|config|database|scripts|docker)(/|$) - [F,L]
+  RewriteRule ^(Dockerfile|docker-compose\.yml|README\.md|\.dockerignore|\.gitignore)$ - [F,L]
 
   RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
   RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
@@ -12,11 +13,4 @@ Options -Indexes
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ public/index.php [L]
-</IfModule>
-
-<IfModule mod_headers.c>
-  Header always set X-Content-Type-Options "nosniff"
-  Header always set X-Frame-Options "DENY"
-  Header always set Referrer-Policy "strict-origin-when-cross-origin"
-  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 </IfModule>

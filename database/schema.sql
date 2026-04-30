@@ -77,6 +77,24 @@ CREATE TABLE IF NOT EXISTS site_links (
   KEY idx_site_links_language_internal (language_code, is_internal)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  language_code CHAR(2) NOT NULL DEFAULT 'ro',
+  name VARCHAR(160) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  phone VARCHAR(60) NULL,
+  subject VARCHAR(220) NOT NULL,
+  message TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'new',
+  ip_hash CHAR(64) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_contact_status_created (status, created_at),
+  KEY idx_contact_language_created (language_code, created_at),
+  KEY idx_contact_ip_created (ip_hash, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS admin_users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username VARCHAR(120) NOT NULL,

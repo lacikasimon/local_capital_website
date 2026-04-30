@@ -12,6 +12,7 @@ if (PHP_SAPI !== 'cli') {
 $files = [
     ROOT_DIR . '/database/schema.sql',
     ROOT_DIR . '/database/imported-wordpress.sql',
+    ROOT_DIR . '/database/content-overrides.sql',
 ];
 
 foreach ($files as $file) {

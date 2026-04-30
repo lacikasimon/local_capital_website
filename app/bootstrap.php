@@ -6,6 +6,17 @@ const ROOT_DIR = __DIR__ . '/..';
 const DEFAULT_LANGUAGE = 'ro';
 const SUPPORTED_LANGUAGES = ['ro', 'en', 'hu'];
 
+function csp_nonce(): string
+{
+    static $nonce = null;
+
+    if ($nonce === null) {
+        $nonce = rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
+    }
+
+    return $nonce;
+}
+
 function app_config(): array
 {
     static $config = null;
@@ -79,14 +90,35 @@ function send_security_headers(): void
         return;
     }
 
+    $nonce = csp_nonce();
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $csp = [
+        "default-src 'self'",
+        "script-src 'nonce-" . $nonce . "'",
+        "style-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "form-action 'self'",
+        "base-uri 'none'",
+        "frame-ancestors 'none'",
+    ];
+    if ($secure) {
+        $csp[] = 'upgrade-insecure-requests';
+    }
+
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self' mailto:; base-uri 'none'; frame-ancestors 'none'");
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header('Cross-Origin-Resource-Policy: same-origin');
+    header('Origin-Agent-Cluster: ?1');
+    header('X-Permitted-Cross-Domain-Policies: none');
+    header('Content-Security-Policy: ' . implode('; ', $csp));
 
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     if ($secure) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     }
@@ -146,11 +178,223 @@ function plain_text(string $value, int $length = 160): string
 {
     $stripped = preg_replace('/[#*_`>-]/', ' ', $value) ?? $value;
     $text = trim((string) (preg_replace('/\s+/', ' ', $stripped) ?? $stripped));
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($text, 'UTF-8') <= $length) {
+            return $text;
+        }
+
+        return trim(mb_substr($text, 0, max(0, $length - 3), 'UTF-8')) . '...';
+    }
+
     if (strlen($text) <= $length) {
         return $text;
     }
 
     return trim(substr($text, 0, max(0, $length - 3))) . '...';
+}
+
+function app_base_url(): string
+{
+    $configured = trim((string) (app_config()['app']['base_url'] ?? ''));
+    if ($configured !== '') {
+        return rtrim($configured, '/');
+    }
+
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    return ($secure ? 'https://' : 'http://') . $host;
+}
+
+function absolute_url(string $path = '/'): string
+{
+    if (preg_match('#^https?://#', $path)) {
+        return $path;
+    }
+
+    return app_base_url() . '/' . ltrim($path ?: '/', '/');
+}
+
+function seo_description(string $value): string
+{
+    return plain_text($value, 158);
+}
+
+function locale_for_language(string $language): string
+{
+    return [
+        'ro' => 'ro_RO',
+        'en' => 'en_US',
+        'hu' => 'hu_HU',
+    ][$language] ?? 'ro_RO';
+}
+
+function form_secret(): string
+{
+    $config = app_config();
+    $secret = (string) ($config['app']['form_secret'] ?? '');
+    if ($secret !== '') {
+        return $secret;
+    }
+
+    return hash('sha256', serialize($config['db']) . ROOT_DIR);
+}
+
+function contact_form_token(?int $timestamp = null): string
+{
+    $timestamp ??= time();
+    $signature = hash_hmac('sha256', (string) $timestamp, form_secret());
+    return $timestamp . '.' . $signature;
+}
+
+function verify_contact_form_token(string $token): bool
+{
+    $parts = explode('.', $token, 2);
+    if (count($parts) !== 2 || !ctype_digit($parts[0])) {
+        return false;
+    }
+
+    $timestamp = (int) $parts[0];
+    if ($timestamp < time() - 7200 || $timestamp > time() + 300) {
+        return false;
+    }
+
+    return hash_equals(contact_form_token($timestamp), $token);
+}
+
+function client_ip_hash(): string
+{
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    return hash_hmac('sha256', $ip, form_secret());
+}
+
+function clean_form_text(string $value, int $limit): string
+{
+    $value = trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+    if (function_exists('mb_substr')) {
+        return mb_substr($value, 0, $limit, 'UTF-8');
+    }
+
+    return substr($value, 0, $limit);
+}
+
+function contact_message_rate_limited(string $ipHash): bool
+{
+    $stmt = db()->prepare('SELECT COUNT(*) FROM contact_messages WHERE ip_hash = ? AND created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)');
+    $stmt->execute([$ipHash]);
+    return (int) $stmt->fetchColumn() >= 5;
+}
+
+function contact_error_text(string $language, string $key): string
+{
+    static $messages = [
+        'ro' => [
+            'expired' => 'Formularul a expirat. Reîncarcă pagina și încearcă din nou.',
+            'spam' => 'Mesajul nu a putut fi trimis.',
+            'name' => 'Completează numele.',
+            'email' => 'Completează o adresă de email validă.',
+            'subject' => 'Completează subiectul.',
+            'message' => 'Completează mesajul.',
+            'privacy' => 'Confirmă că ai citit informarea privind prelucrarea datelor personale.',
+            'rate' => 'Ai trimis prea multe mesaje într-un timp scurt. Te rugăm să revii peste câteva minute.',
+        ],
+        'en' => [
+            'expired' => 'The form has expired. Reload the page and try again.',
+            'spam' => 'The message could not be sent.',
+            'name' => 'Enter your name.',
+            'email' => 'Enter a valid email address.',
+            'subject' => 'Enter a subject.',
+            'message' => 'Enter your message.',
+            'privacy' => 'Confirm that you have read the personal data processing notice.',
+            'rate' => 'You sent too many messages in a short time. Please try again in a few minutes.',
+        ],
+        'hu' => [
+            'expired' => 'Az űrlap lejárt. Töltsd újra az oldalt, és próbáld meg újra.',
+            'spam' => 'Az üzenetet nem sikerült elküldeni.',
+            'name' => 'Add meg a neved.',
+            'email' => 'Adj meg egy érvényes e-mail címet.',
+            'subject' => 'Add meg a tárgyat.',
+            'message' => 'Írd be az üzenetet.',
+            'privacy' => 'Erősítsd meg, hogy elolvastad a személyes adatok kezeléséről szóló tájékoztatót.',
+            'rate' => 'Rövid idő alatt túl sok üzenetet küldtél. Kérjük, próbáld újra néhány perc múlva.',
+        ],
+    ];
+
+    $language = normalize_language($language);
+    return $messages[$language][$key] ?? $messages[DEFAULT_LANGUAGE][$key] ?? $key;
+}
+
+function save_contact_message(string $language, array $input): array
+{
+    $errors = [];
+
+    if (!verify_contact_form_token((string) ($input['contact_token'] ?? ''))) {
+        $errors[] = contact_error_text($language, 'expired');
+    }
+
+    if (trim((string) ($input['website'] ?? '')) !== '') {
+        $errors[] = contact_error_text($language, 'spam');
+    }
+
+    $name = clean_form_text((string) ($input['name'] ?? ''), 160);
+    $email = clean_form_text((string) ($input['email'] ?? ''), 190);
+    $phone = clean_form_text((string) ($input['phone'] ?? ''), 60);
+    $subject = clean_form_text((string) ($input['subject'] ?? ''), 220);
+    $message = trim((string) ($input['message'] ?? ''));
+    if (function_exists('mb_substr')) {
+        $message = mb_substr($message, 0, 4000, 'UTF-8');
+    } else {
+        $message = substr($message, 0, 4000);
+    }
+    $consent = isset($input['privacy']);
+
+    if ($name === '') {
+        $errors[] = contact_error_text($language, 'name');
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = contact_error_text($language, 'email');
+    }
+    if ($subject === '') {
+        $errors[] = contact_error_text($language, 'subject');
+    }
+    if (trim($message) === '') {
+        $errors[] = contact_error_text($language, 'message');
+    }
+    if (!$consent) {
+        $errors[] = contact_error_text($language, 'privacy');
+    }
+
+    $ipHash = client_ip_hash();
+    if (!$errors && contact_message_rate_limited($ipHash)) {
+        $errors[] = contact_error_text($language, 'rate');
+    }
+
+    $old = [
+        'name' => $name,
+        'email' => $email,
+        'phone' => $phone,
+        'subject' => $subject,
+        'message' => $message,
+        'privacy' => $consent,
+    ];
+
+    if ($errors) {
+        return ['ok' => false, 'errors' => $errors, 'old' => $old];
+    }
+
+    $stmt = db()->prepare('INSERT INTO contact_messages (language_code, name, email, phone, subject, message, status, ip_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([
+        normalize_language($language),
+        $name,
+        $email,
+        $phone !== '' ? $phone : null,
+        $subject,
+        $message,
+        'new',
+        $ipHash,
+    ]);
+
+    return ['ok' => true, 'errors' => [], 'old' => []];
 }
 
 function render_inline(string $value): string
@@ -240,6 +484,12 @@ function localized_path(string $path, ?string $language = null): string
     }
 
     return language_prefix($language) . ($path === '/' ? '' : $path);
+}
+
+function current_request_path(): string
+{
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    return '/' . trim($path, '/') ?: '/';
 }
 
 function detect_language_and_path(): array
@@ -355,7 +605,7 @@ function verify_csrf(): void
     $token = $_POST['csrf'] ?? '';
     if (!is_string($token) || !hash_equals($_SESSION['csrf'] ?? '', $token)) {
         http_response_code(403);
-        echo render_error_page('Cerere respinsa', 'Tokenul de securitate nu este valid.');
+        echo render_error_page('Cerere respinsă', 'Tokenul de securitate nu este valid.');
         exit;
     }
 }
@@ -508,5 +758,8 @@ function apply_editable_fields(mixed $current, array $path): mixed
 
 if (PHP_SAPI !== 'cli') {
     send_security_headers();
-    start_secure_session();
+    $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    if (str_starts_with('/' . trim($requestPath, '/'), '/admin')) {
+        start_secure_session();
+    }
 }

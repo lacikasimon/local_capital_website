@@ -17,6 +17,7 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>' . e($title) . ' | ' . e($site['settings']['brandName']) . '</title>
+    <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="admin-body">
@@ -31,7 +32,7 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
         ' . $languageLinks . '
         <form action="/admin/logout" method="post">
           <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
-          <button type="submit">Iesire</button>
+          <button type="submit">Ieșire</button>
         </form>
       </nav>
     </header>
@@ -48,6 +49,7 @@ function login_page(string $message = ''): string
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin login | Local Capital</title>
+    <meta name="robots" content="noindex,nofollow">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body class="login-page">
@@ -57,7 +59,7 @@ function login_page(string $message = ''): string
       ' . ($message ? '<p class="form-message">' . e($message) . '</p>' : '') . '
       <form action="/admin/login" method="post">
         <label>Utilizator <input name="username" autocomplete="username" required></label>
-        <label>Parola <input name="password" type="password" autocomplete="current-password" required></label>
+        <label>Parolă <input name="password" type="password" autocomplete="current-password" required></label>
         <button class="button" type="submit">Autentificare</button>
       </form>
     </main>
@@ -70,7 +72,7 @@ function handle_login_post(): void
     $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
     if ($_SESSION['login_attempts'] > 10) {
         http_response_code(429);
-        echo login_page('Prea multe incercari. Te rugam sa astepti cateva minute.');
+        echo login_page('Prea multe încercări. Te rugăm să aștepți câteva minute.');
         return;
     }
 
@@ -93,6 +95,7 @@ function handle_login_post(): void
 
 function render_admin_dashboard(array $site, array $admin): string
 {
+    $messageCount = unread_contact_message_count();
     $pages = '';
     foreach ($site['pages'] as $key => $page) {
         $pages .= '<li><a href="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '">' . e($page['title']) . '</a></li>';
@@ -106,9 +109,10 @@ function render_admin_dashboard(array $site, array $admin): string
     $body = '<section class="admin-grid">
     <article class="admin-card">
       <h1>Panou admin</h1>
-      <p>Editeaza textele site-ului, datele companiei si articolele publicate.</p>
-      <a class="button" href="/admin/settings?lang=' . e($site['language']) . '">Setari site</a>
+      <p>Editează textele site-ului, datele companiei și articolele publicate.</p>
+      <a class="button" href="/admin/settings?lang=' . e($site['language']) . '">Setări site</a>
       <a class="button button-secondary" href="/admin/links?lang=' . e($site['language']) . '">Link inventory</a>
+      <a class="button button-secondary" href="/admin/messages?lang=' . e($site['language']) . '">Mesaje' . ($messageCount ? ' (' . $messageCount . ')' : '') . '</a>
     </article>
     <article class="admin-card">
       <h2>Pagini</h2>
@@ -116,12 +120,60 @@ function render_admin_dashboard(array $site, array $admin): string
     </article>
     <article class="admin-card">
       <h2>Articole</h2>
-      <ul class="admin-list">' . ($posts ?: '<li>Nu exista articole.</li>') . '</ul>
+      <ul class="admin-list">' . ($posts ?: '<li>Nu există articole.</li>') . '</ul>
       <a class="button button-secondary" href="/admin/posts/new?lang=' . e($site['language']) . '">Articol nou</a>
     </article>
   </section>';
 
     return admin_layout($site, $admin, $body, 'Panou admin');
+}
+
+function unread_contact_message_count(): int
+{
+    $stmt = db()->query("SELECT COUNT(*) FROM contact_messages WHERE status = 'new'");
+    return (int) $stmt->fetchColumn();
+}
+
+function render_contact_messages(array $site, array $admin): string
+{
+    $stmt = db()->prepare('SELECT * FROM contact_messages WHERE language_code = ? ORDER BY status = "new" DESC, created_at DESC LIMIT 100');
+    $stmt->execute([$site['language']]);
+    $rows = repair_data_encoding($stmt->fetchAll());
+
+    $items = '';
+    foreach ($rows as $row) {
+        $status = (string) $row['status'];
+        $nextStatus = $status === 'archived' ? 'read' : ($status === 'new' ? 'read' : 'archived');
+        $buttonLabel = $status === 'archived' ? 'Reactivare' : ($status === 'new' ? 'Marchează citit' : 'Arhivează');
+        $phone = $row['phone'] ? '<br><a href="tel:' . e(preg_replace('/\s+/', '', $row['phone'])) . '">' . e($row['phone']) . '</a>' : '';
+        $items .= '<tr>
+          <td><span class="status-pill status-' . e($status) . '">' . e(label_from_key($status)) . '</span><br><small>' . e($row['created_at']) . '</small></td>
+          <td><strong>' . e($row['name']) . '</strong><br><a href="mailto:' . e($row['email']) . '">' . e($row['email']) . '</a>' . $phone . '</td>
+          <td><strong>' . e($row['subject']) . '</strong><p class="message-preview">' . e($row['message']) . '</p></td>
+          <td>
+            <form action="/admin/messages/' . e($row['id']) . '?lang=' . e($site['language']) . '" method="post">
+              <input type="hidden" name="lang" value="' . e($site['language']) . '">
+              <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+              <input type="hidden" name="status" value="' . e($nextStatus) . '">
+              <button class="button button-secondary" type="submit">' . e($buttonLabel) . '</button>
+            </form>
+          </td>
+        </tr>';
+    }
+
+    $body = '<section class="admin-card wide">
+      <p class="eyebrow">Contact</p>
+      <h1>Mesaje primite</h1>
+      <p>Ultimele 100 de mesaje trimise prin formularul de contact pentru limba ' . e(strtoupper($site['language'])) . '.</p>
+      <div class="table-wrap">
+        <table class="admin-table messages-table">
+          <thead><tr><th>Status</th><th>Contact</th><th>Mesaj</th><th>Acțiune</th></tr></thead>
+          <tbody>' . ($items ?: '<tr><td colspan="4">Nu există mesaje pentru această limbă.</td></tr>') . '</tbody>
+        </table>
+      </div>
+    </section>';
+
+    return admin_layout($site, $admin, $body, 'Mesaje primite');
 }
 
 function render_links_inventory(array $site, array $admin): string
@@ -148,7 +200,7 @@ function render_links_inventory(array $site, array $admin): string
       <div class="table-wrap">
         <table class="admin-table">
           <thead><tr><th>Sursa</th><th>Link</th><th>Text</th><th>Tip</th></tr></thead>
-          <tbody>' . ($items ?: '<tr><td colspan="4">Nu exista linkuri importate.</td></tr>') . '</tbody>
+          <tbody>' . ($items ?: '<tr><td colspan="4">Nu există linkuri importate.</td></tr>') . '</tbody>
         </table>
       </div>
     </section>';
@@ -159,18 +211,18 @@ function render_links_inventory(array $site, array $admin): string
 function render_settings_form(array $site, array $admin): string
 {
     $body = '<section class="admin-card wide">
-    <h1>Setari site</h1>
+    <h1>Setări site</h1>
     <form class="admin-form" action="/admin/settings?lang=' . e($site['language']) . '" method="post">
       <input type="hidden" name="lang" value="' . e($site['language']) . '">
       <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
       ' . render_editable_fields($site['settings'], ['settings']) . '
-      <h2>Navigatie</h2>
+      <h2>Navigație</h2>
       ' . render_editable_fields($site['navigation'], ['navigation']) . '
-      <button class="button" type="submit">Salveaza</button>
+      <button class="button" type="submit">Salvează</button>
     </form>
   </section>';
 
-    return admin_layout($site, $admin, $body, 'Setari site');
+    return admin_layout($site, $admin, $body, 'Setări site');
 }
 
 function render_page_editor(array $site, array $admin, string $key): ?string
@@ -181,13 +233,13 @@ function render_page_editor(array $site, array $admin, string $key): ?string
 
     $page = $site['pages'][$key];
     $body = '<section class="admin-card wide">
-    <p class="eyebrow">Pagina</p>
+    <p class="eyebrow">Pagină</p>
     <h1>' . e($page['title']) . '</h1>
     <form class="admin-form" action="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '" method="post">
       <input type="hidden" name="lang" value="' . e($site['language']) . '">
       <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
       ' . render_editable_fields($page, ['page']) . '
-      <button class="button" type="submit">Salveaza pagina</button>
+      <button class="button" type="submit">Salvează pagina</button>
     </form>
   </section>';
 
@@ -228,9 +280,9 @@ function render_post_editor(array $site, array $admin, string $slug): ?string
       <label>Titlu <input name="title" value="' . e($post['title']) . '" required></label>
       <label>Data <input name="date" type="date" value="' . e($post['date']) . '" required></label>
       <label>Rezumat <textarea name="excerpt" rows="3">' . e($post['excerpt']) . '</textarea></label>
-      <label>Continut <textarea name="body" rows="14">' . e($post['body']) . '</textarea></label>
+      <label>Conținut <textarea name="body" rows="14">' . e($post['body']) . '</textarea></label>
       <label class="checkbox"><input name="published" type="checkbox" ' . ($post['published'] ? 'checked' : '') . '> Publicat</label>
-      <button class="button" type="submit">Salveaza articol</button>
+      <button class="button" type="submit">Salvează articol</button>
     </form>
   </section>';
 
@@ -256,7 +308,7 @@ function save_page(array $site, string $key): void
 {
     if (empty($site['pages'][$key])) {
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost gasita', 'Adresa ceruta nu exista.');
+        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
         exit;
     }
 
@@ -282,8 +334,22 @@ function save_page(array $site, string $key): void
 function save_post(string $originalSlug): string
 {
     $language = admin_language();
-    $title = trim((string) ($_POST['title'] ?? 'Articol fara titlu'));
+    $title = trim((string) ($_POST['title'] ?? 'Articol fără titlu'));
     $slug = slugify(trim((string) ($_POST['slug'] ?? '')) ?: $title);
+    $existing = null;
+    if ($originalSlug !== 'new') {
+        $stmt = db()->prepare('SELECT source_type, path FROM posts WHERE language_code = ? AND slug = ? LIMIT 1');
+        $stmt->execute([$language, $originalSlug]);
+        $existing = $stmt->fetch() ?: null;
+        if (!$existing) {
+            http_response_code(404);
+            echo render_error_page('Pagina nu a fost găsită', 'Articolul cerut nu există.');
+            exit;
+        }
+        if (($existing['source_type'] ?? 'post') !== 'post') {
+            $slug = $originalSlug;
+        }
+    }
     $post = [
         'slug' => $slug,
         'title' => $title,
@@ -297,9 +363,22 @@ function save_post(string $originalSlug): string
         $stmt = db()->prepare('INSERT INTO posts (language_code, source_type, slug, path, source_url, title, post_date, excerpt, body, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([$language, 'post', $post['slug'], '/blog/' . $post['slug'], null, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published']]);
     } else {
-        $stmt = db()->prepare('UPDATE posts SET slug = ?, path = ?, title = ?, post_date = ?, excerpt = ?, body = ?, published = ?, updated_at = CURRENT_TIMESTAMP WHERE language_code = ? AND slug = ?');
-        $stmt->execute([$post['slug'], '/blog/' . $post['slug'], $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'], $language, $originalSlug]);
+        $sourceType = $existing['source_type'] ?? 'post';
+        $path = $sourceType === 'post' ? '/blog/' . $post['slug'] : ($existing['path'] ?? '');
+        $stmt = db()->prepare('UPDATE posts SET slug = ?, path = ?, title = ?, post_date = ?, excerpt = ?, body = ?, published = ?, updated_at = CURRENT_TIMESTAMP WHERE language_code = ? AND source_type = ? AND slug = ?');
+        $stmt->execute([$post['slug'], $path, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'], $language, $sourceType, $originalSlug]);
     }
 
     return $post['slug'];
+}
+
+function update_contact_message_status(int $id): void
+{
+    $status = (string) ($_POST['status'] ?? 'read');
+    if (!in_array($status, ['new', 'read', 'archived'], true)) {
+        $status = 'read';
+    }
+
+    $stmt = db()->prepare('UPDATE contact_messages SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    $stmt->execute([$status, $id]);
 }
