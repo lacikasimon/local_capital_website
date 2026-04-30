@@ -57,9 +57,12 @@ function public_layout(array $site, string $body, array $options = []): string
     <script type="application/ld+json" nonce="' . e(csp_nonce()) . '">' . str_replace('</', '<\/', $structuredData ?: '{}') . '</script>
   </head>
   <body>
-    ' . render_header($site, $options['active'] ?? '') . '
+    ' . render_header($site, $options['active'] ?? '', $canonicalPath) . '
     <main>' . $body . '</main>
     ' . render_footer($site) . '
+    ' . render_cookie_consent($site) . '
+    ' . render_mobile_menu_script() . '
+    ' . render_cookie_consent_script() . '
   </body>
 </html>';
 }
@@ -77,6 +80,11 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Politica privind datele personale',
             'footer_data_rights' => 'Informare drepturi persoane vizate',
             'footer_retention' => 'Politica de retenție date',
+            'cookie_title' => 'Preferințe cookie',
+            'cookie_text' => 'Folosim cookie-uri necesare pentru funcționarea site-ului. Cookie-urile opționale vor fi folosite doar după acordul tău.',
+            'cookie_privacy' => 'Vezi politica privind datele personale',
+            'cookie_necessary' => 'Doar necesare',
+            'cookie_accept_all' => 'Accept toate',
             'menu_toggle' => 'Meniu',
             'trust_aria' => 'Avantaje rapide',
             'trust_time_value' => '2 ore',
@@ -127,6 +135,11 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Personal data policy',
             'footer_data_rights' => 'Data subject rights notice',
             'footer_retention' => 'Data retention policy',
+            'cookie_title' => 'Cookie preferences',
+            'cookie_text' => 'We use necessary cookies to keep the website working. Optional cookies will only be used after your consent.',
+            'cookie_privacy' => 'View the personal data policy',
+            'cookie_necessary' => 'Necessary only',
+            'cookie_accept_all' => 'Accept all',
             'menu_toggle' => 'Menu',
             'trust_aria' => 'Quick advantages',
             'trust_time_value' => '2 hours',
@@ -177,6 +190,11 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Személyes adatok kezelése',
             'footer_data_rights' => 'Érintetti jogokról szóló tájékoztató',
             'footer_retention' => 'Adatmegőrzési szabályzat',
+            'cookie_title' => 'Cookie beállítások',
+            'cookie_text' => 'Az oldal működéséhez szükséges sütiket használunk. Az opcionális sütiket csak a hozzájárulásod után használjuk.',
+            'cookie_privacy' => 'Adatkezelési tájékoztató megnyitása',
+            'cookie_necessary' => 'Csak szükséges',
+            'cookie_accept_all' => 'Mindet elfogadom',
             'menu_toggle' => 'Menü',
             'trust_aria' => 'Gyors előnyök',
             'trust_time_value' => '2 óra',
@@ -343,7 +361,7 @@ function build_structured_data(array $site, array $options): array
                     '@type' => 'Service',
                     'name' => $post['title'],
                     'description' => $post['excerpt'] ?: plain_text($post['body']),
-                    'url' => absolute_url(localized_path($post['path'] ?: '/blog/' . $post['slug'], $language)),
+                    'url' => absolute_url(localized_path(localized_post_path($post, $language), $language)),
                     'provider' => $organizationId,
                 ],
             ], $servicePosts),
@@ -431,11 +449,12 @@ function build_structured_data(array $site, array $options): array
     ];
 }
 
-function render_header(array $site, string $active): string
+function render_header(array $site, string $active, string $currentPath = '/'): string
 {
     $settings = $site['settings'];
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $menuId = 'site-menu-toggle';
+    $navId = 'site-main-nav';
     $links = '';
 
     foreach ($site['navigation'] as $item) {
@@ -449,7 +468,7 @@ function render_header(array $site, string $active): string
     $languageLinks = '';
     foreach (SUPPORTED_LANGUAGES as $code) {
         $class = $language === $code ? ' class="active"' : '';
-        $languageLinks .= '<a' . $class . ' href="' . e(localized_path('/', $code)) . '">' . strtoupper(e($code)) . '</a>';
+        $languageLinks .= '<a' . $class . ' href="' . e(localized_path($currentPath, $code)) . '">' . strtoupper(e($code)) . '</a>';
     }
 
     return '<header class="site-header">
@@ -460,17 +479,104 @@ function render_header(array $site, string $active): string
         <small>' . e($settings['tagline']) . '</small>
       </span>
     </a>
-    <input class="menu-toggle-input" id="' . e($menuId) . '" type="checkbox" aria-label="' . e(ui_text($site, 'menu_toggle')) . '">
+    <input class="menu-toggle-input" id="' . e($menuId) . '" type="checkbox" aria-label="' . e(ui_text($site, 'menu_toggle')) . '" aria-controls="' . e($navId) . '" aria-expanded="false">
     <label class="menu-toggle" for="' . e($menuId) . '">
       <span aria-hidden="true"></span>
       <span aria-hidden="true"></span>
       <span aria-hidden="true"></span>
       <span class="sr-only">' . e(ui_text($site, 'menu_toggle')) . '</span>
     </label>
-    <nav class="main-nav" aria-label="' . e(ui_text($site, 'aria_main_nav')) . '">' . $links . '</nav>
+    <nav class="main-nav" id="' . e($navId) . '" aria-label="' . e(ui_text($site, 'aria_main_nav')) . '">' . $links . '</nav>
     <nav class="language-nav" aria-label="' . e(ui_text($site, 'aria_language_nav')) . '">' . $languageLinks . '</nav>
-    <a class="header-contact" href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">' . e($settings['phone']) . '</a>
+    <a class="header-contact" href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">
+      <svg class="phone-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.63 2.65a2 2 0 0 1-.45 2.11L8.09 9.69a16 16 0 0 0 6.22 6.22l1.21-1.21a2 2 0 0 1 2.11-.45c.85.3 1.74.51 2.65.63A2 2 0 0 1 22 16.92Z"></path>
+      </svg>
+      <span>' . e($settings['phone']) . '</span>
+    </a>
   </header>';
+}
+
+function render_mobile_menu_script(): string
+{
+    return '<script nonce="' . e(csp_nonce()) . '">
+(() => {
+  document.querySelectorAll(".menu-toggle-input[aria-controls]").forEach((toggle) => {
+    const sync = () => toggle.setAttribute("aria-expanded", toggle.checked ? "true" : "false");
+    toggle.addEventListener("change", sync);
+    sync();
+  });
+})();
+</script>';
+}
+
+function cookie_consent_cookie_name(): string
+{
+    return 'lc_cookie_consent';
+}
+
+function has_cookie_consent(): bool
+{
+    $choice = (string) ($_COOKIE[cookie_consent_cookie_name()] ?? '');
+    return in_array($choice, ['necessary', 'all'], true);
+}
+
+function render_cookie_consent(array $site): string
+{
+    $language = normalize_language($site['language'] ?? DEFAULT_LANGUAGE);
+    $hidden = has_cookie_consent() ? ' hidden' : '';
+    $privacyPath = localized_path('/politica-privind-datele-personale', $language);
+
+    return '<div class="cookie-consent-backdrop" data-cookie-consent' . $hidden . '>
+    <section class="cookie-consent" role="region" aria-labelledby="cookie-consent-title" aria-describedby="cookie-consent-text">
+      <div>
+        <h2 id="cookie-consent-title">' . e(ui_text($site, 'cookie_title')) . '</h2>
+        <p id="cookie-consent-text">' . e(ui_text($site, 'cookie_text')) . '</p>
+        <a href="' . e($privacyPath) . '">' . e(ui_text($site, 'cookie_privacy')) . '</a>
+      </div>
+      <div class="cookie-actions">
+        <button class="button button-light" type="button" data-cookie-choice="necessary">' . e(ui_text($site, 'cookie_necessary')) . '</button>
+        <button class="button" type="button" data-cookie-choice="all">' . e(ui_text($site, 'cookie_accept_all')) . '</button>
+      </div>
+    </section>
+  </div>';
+}
+
+function render_cookie_consent_script(): string
+{
+    $cookieName = cookie_consent_cookie_name();
+
+    return '<script nonce="' . e(csp_nonce()) . '">
+(() => {
+  const banner = document.querySelector("[data-cookie-consent]");
+  if (!banner) {
+    return;
+  }
+
+  const cookieName = "' . e($cookieName) . '";
+  const hasConsent = document.cookie
+    .split("; ")
+    .some((cookie) => cookie.startsWith(`${cookieName}=`));
+
+  if (hasConsent) {
+    banner.hidden = true;
+    return;
+  }
+
+  banner.hidden = false;
+
+  const setConsent = (choice) => {
+    const maxAge = 60 * 60 * 24 * 180;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${cookieName}=${encodeURIComponent(choice)}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`;
+    banner.hidden = true;
+  };
+
+  banner.querySelectorAll("[data-cookie-choice]").forEach((button) => {
+    button.addEventListener("click", () => setConsent(button.dataset.cookieChoice || "necessary"));
+  });
+})();
+</script>';
 }
 
 function render_footer(array $site): string
@@ -497,13 +603,23 @@ function render_footer(array $site): string
       </section>
       <section>
         <h2>' . e(ui_text($site, 'footer_links')) . '</h2>
-        <p><a href="' . e($settings['anpcUrl']) . '" rel="noopener">' . e($settings['anpcLabel']) . '</a></p>
+        <p><a href="' . e($settings['anpcUrl']) . '" target="_blank" rel="nofollow noopener">' . e($settings['anpcLabel']) . '</a></p>
         <p><a href="' . e(localized_path('/gdpr', $language)) . '">GDPR</a></p>
         <p><a href="' . e(localized_path('/termene-si-conditii', $language)) . '">' . e(ui_text($site, 'footer_terms')) . '</a></p>
         <p><a href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">' . e(ui_text($site, 'footer_privacy')) . '</a></p>
         <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">' . e(ui_text($site, 'footer_data_rights')) . '</a></p>
         <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">' . e(ui_text($site, 'footer_retention')) . '</a></p>
-        <img class="anpc" src="/assets/anpc.webp" alt="ANPC">
+        <div class="footer-regulatory-logos" aria-label="ANPC, SAL si SOL">
+          <a href="' . e($settings['anpcUrl']) . '" target="_blank" rel="nofollow noopener" aria-label="ANPC">
+            <img src="/assets/anpc.webp" alt="ANPC" loading="lazy" decoding="async">
+          </a>
+          <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="nofollow noopener" aria-label="Solutionarea alternativa a litigiilor">
+            <img src="/assets/anpc-sal.svg" alt="Solutionarea alternativa a litigiilor" loading="lazy" decoding="async">
+          </a>
+          <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener" aria-label="Solutionarea online a litigiilor">
+            <img src="/assets/anpc-sol.svg" alt="Solutionarea online a litigiilor" loading="lazy" decoding="async">
+          </a>
+        </div>
       </section>
     </div>
   </footer>';
@@ -523,7 +639,7 @@ function render_link_card_grid(array $site, array $posts): string
     foreach ($posts as $post) {
         $html .= '<article class="post-card">
         <p class="eyebrow">' . e(format_date($post['date'])) . '</p>
-        <h3><a href="' . e(localized_path($post['path'] ?: '/blog/' . $post['slug'], $site['language'])) . '">' . e($post['title']) . '</a></h3>
+        <h3><a href="' . e(localized_path(localized_post_path($post, $site['language']), $site['language'])) . '">' . e($post['title']) . '</a></h3>
         <p>' . e($post['excerpt'] ?: plain_text($post['body'])) . '</p>
       </article>';
     }
@@ -741,7 +857,7 @@ function render_contact(array $site, array $errors = [], array $old = []): strin
         'aiSummary' => $page['aiSummary'] ?? $page['summary'],
         'faqItems' => $page['faq'] ?? [],
         'webPageType' => 'ContactPage',
-        'canonicalPath' => '/contact',
+        'canonicalPath' => route_page_path('contact', $site['language']) ?? '/contact',
     ]);
 }
 
@@ -754,7 +870,7 @@ function render_blog(array $site): string
         }
         $posts .= '<article class="post-card">
         <p class="eyebrow">' . e(format_date($post['date'])) . '</p>
-        <h2><a href="' . e(localized_path($post['path'] ?: '/blog/' . $post['slug'], $site['language'])) . '">' . e($post['title']) . '</a></h2>
+        <h2><a href="' . e(localized_path(localized_post_path($post, $site['language']), $site['language'])) . '">' . e($post['title']) . '</a></h2>
         <p>' . e($post['excerpt'] ?: plain_text($post['body'])) . '</p>
       </article>';
     }
@@ -774,7 +890,7 @@ function render_blog(array $site): string
         'active' => 'blog',
         'title' => ui_text($site, 'blog_page_title'),
         'description' => ui_text($site, 'blog_description'),
-        'canonicalPath' => '/blog',
+        'canonicalPath' => blog_index_path($site['language']),
     ]);
 }
 
@@ -798,7 +914,7 @@ function render_case_study_archive(array $site, string $category): string
         'active' => 'blog',
         'title' => $title,
         'description' => ui_text($site, 'case_description'),
-        'canonicalPath' => '/finlon-case-study-category/' . $category,
+        'canonicalPath' => case_study_archive_path($site['language']),
     ]);
 }
 
@@ -819,7 +935,7 @@ function render_post_article(array $site, array $post): string
         'schemaType' => ($post['source_type'] ?? '') === 'service' ? 'Service' : 'Article',
         'webPageType' => ($post['source_type'] ?? '') === 'service' ? 'ItemPage' : 'Article',
         'datePublished' => $post['date'] ?? null,
-        'canonicalPath' => $post['path'] ?: '/blog/' . $post['slug'],
+        'canonicalPath' => localized_post_path($post, $site['language']),
     ]);
 }
 
@@ -839,7 +955,7 @@ function render_post(array $site, string $slug): ?string
 function render_post_by_path(array $site, string $path): ?string
 {
     foreach ($site['posts'] as $post) {
-        if (($post['path'] ?? '') !== $path || !$post['published']) {
+        if (!$post['published'] || !post_path_matches($post, $site['language'], $path)) {
             continue;
         }
 
@@ -849,10 +965,54 @@ function render_post_by_path(array $site, string $path): ?string
     return null;
 }
 
-function render_error_page(string $title, string $message): string
+function error_page_text(?string $language, string $key): string
 {
+    static $texts = [
+        'ro' => [
+            'not_found_title' => 'Pagina nu a fost găsită',
+            'not_found_message' => 'Adresa cerută nu există.',
+            'method_title' => 'Metodă nepermisă',
+            'method_message' => 'Această pagină acceptă doar citire.',
+            'rejected_title' => 'Cerere respinsă',
+            'rejected_message' => 'Tokenul de securitate nu este valid.',
+            'server_title' => 'Eroare',
+            'server_message' => 'A apărut o eroare. Te rugăm să încerci din nou.',
+            'back_home' => 'Înapoi la prima pagină',
+        ],
+        'en' => [
+            'not_found_title' => 'Page not found',
+            'not_found_message' => 'The requested address does not exist.',
+            'method_title' => 'Method not allowed',
+            'method_message' => 'This page only accepts read requests.',
+            'rejected_title' => 'Request rejected',
+            'rejected_message' => 'The security token is not valid.',
+            'server_title' => 'Error',
+            'server_message' => 'An error occurred. Please try again.',
+            'back_home' => 'Back to the home page',
+        ],
+        'hu' => [
+            'not_found_title' => 'Az oldal nem található',
+            'not_found_message' => 'A kért cím nem létezik.',
+            'method_title' => 'Nem engedélyezett metódus',
+            'method_message' => 'Ez az oldal csak olvasási kéréseket fogad.',
+            'rejected_title' => 'A kérés elutasítva',
+            'rejected_message' => 'A biztonsági token nem érvényes.',
+            'server_title' => 'Hiba',
+            'server_message' => 'Hiba történt. Kérjük, próbáld újra.',
+            'back_home' => 'Vissza a főoldalra',
+        ],
+    ];
+
+    $language = normalize_language($language);
+    return $texts[$language][$key] ?? $texts[DEFAULT_LANGUAGE][$key] ?? $key;
+}
+
+function render_error_page(string $title, string $message, ?string $language = DEFAULT_LANGUAGE): string
+{
+    $language = normalize_language($language);
+
     return '<!doctype html>
-<html lang="ro">
+<html lang="' . e($language) . '">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -864,7 +1024,7 @@ function render_error_page(string $title, string $message): string
     <main class="error-page">
       <h1>' . e($title) . '</h1>
       <p>' . e($message) . '</p>
-      <a class="button" href="/">Înapoi la prima pagină</a>
+      <a class="button" href="' . e(localized_path('/', $language)) . '">' . e(error_page_text($language, 'back_home')) . '</a>
     </main>
   </body>
 </html>';
@@ -932,8 +1092,7 @@ function render_llms_txt(): string
             $lines[] = '';
             $lines[] = '### Credit services';
             foreach ($servicePosts as $post) {
-                $path = $post['path'] ?: '/blog/' . $post['slug'];
-                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path($path, $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
+                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path(localized_post_path($post, $language), $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
             }
         }
 
@@ -945,8 +1104,7 @@ function render_llms_txt(): string
             $lines[] = '';
             $lines[] = '### Articles';
             foreach ($articles as $post) {
-                $path = $post['path'] ?: '/blog/' . $post['slug'];
-                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path($path, $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
+                $lines[] = '- ' . $post['title'] . ': ' . absolute_url(localized_path(localized_post_path($post, $language), $language)) . ' - ' . plain_text((string) ($post['excerpt'] ?: $post['body']), 220);
             }
         }
 
@@ -972,12 +1130,12 @@ function sitemap_paths_for_site(array $site): array
         $paths[] = $page['path'] ?? '/';
     }
 
-    $paths[] = '/blog';
-    $paths[] = '/finlon-case-study-category/business';
+    $paths[] = blog_index_path($site['language']);
+    $paths[] = case_study_archive_path($site['language']);
 
     foreach ($site['posts'] as $post) {
         if (!empty($post['published'])) {
-            $paths[] = $post['path'] ?: '/blog/' . $post['slug'];
+            $paths[] = localized_post_path($post, $site['language']);
         }
     }
 
@@ -992,7 +1150,7 @@ function render_sitemap_xml(): string
     foreach (SUPPORTED_LANGUAGES as $language) {
         $site = load_site($language);
         foreach (sitemap_paths_for_site($site) as $path) {
-            $entries[$path] = true;
+            $entries[localized_route_path($path, DEFAULT_LANGUAGE)] = true;
         }
     }
 

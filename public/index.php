@@ -47,7 +47,7 @@ try {
             }
 
             if (preg_match('#^/admin/posts/([a-z0-9-]+|new)$#', $path, $match)) {
-                $slug = save_post($match[1]);
+                $slug = save_post($site, $admin, $match[1]);
                 redirect('/admin/posts/' . $slug . '?lang=' . $adminLang . '&ok=1');
             }
 
@@ -94,13 +94,13 @@ try {
         }
 
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
+        echo render_error_page(error_page_text($adminLang, 'not_found_title'), error_page_text($adminLang, 'not_found_message'), $adminLang);
         exit;
     }
 
     $site = load_site($language);
 
-    if ($path === '/contact' && $method === 'POST') {
+    if ((route_page_key_for_path($language, $path) === 'contact') && $method === 'POST') {
         $result = save_contact_message($language, $_POST);
         if ($result['ok']) {
             redirect(localized_path('/contact', $language) . '?sent=1');
@@ -113,7 +113,7 @@ try {
 
     if ($method !== 'GET') {
         http_response_code(405);
-        echo render_error_page('Metodă nepermisă', 'Această pagină acceptă doar citire.');
+        echo render_error_page(error_page_text($language, 'method_title'), error_page_text($language, 'method_message'), $language);
         exit;
     }
 
@@ -135,7 +135,7 @@ try {
         exit;
     }
 
-    if ($path === '/blog') {
+    if (blog_index_path_matches($language, $path)) {
         echo render_blog($site);
         exit;
     }
@@ -154,15 +154,15 @@ try {
         exit;
     }
 
-    if (preg_match('#^/finlon-case-study-category/([a-z0-9-]+)$#', $path, $match)) {
-        echo render_case_study_archive($site, $match[1]);
+    if (case_study_archive_path_matches($language, $path)) {
+        echo render_case_study_archive($site, 'business');
         exit;
     }
 
     [$key, $page] = page_by_path($site, $path);
     if (!$page) {
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
+        echo render_error_page(error_page_text($language, 'not_found_title'), error_page_text($language, 'not_found_message'), $language);
         exit;
     }
 
@@ -176,5 +176,5 @@ try {
 } catch (Throwable $error) {
     $debug = app_config()['app']['debug'] ?? false;
     http_response_code(500);
-    echo render_error_page('Eroare', $debug ? $error->getMessage() : 'A apărut o eroare. Te rugăm să încerci din nou.');
+    echo render_error_page(error_page_text($language ?? DEFAULT_LANGUAGE, 'server_title'), $debug ? $error->getMessage() : error_page_text($language ?? DEFAULT_LANGUAGE, 'server_message'), $language ?? DEFAULT_LANGUAGE);
 }

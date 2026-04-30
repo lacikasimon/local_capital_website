@@ -105,6 +105,18 @@ CREATE TABLE IF NOT EXISTS admin_users (
   UNIQUE KEY uniq_admin_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS admin_login_attempts (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  attempt_key CHAR(64) NOT NULL,
+  ip_hash CHAR(64) NOT NULL,
+  username_hash CHAR(64) NOT NULL,
+  attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_admin_login_attempt_key_time (attempt_key, attempted_at),
+  KEY idx_admin_login_ip_time (ip_hash, attempted_at),
+  KEY idx_admin_login_attempt_time (attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO settings (language_code, setting_key, setting_value) VALUES
 ('ro', 'brandName', 'Local Capital'),
 ('ro', 'legalName', 'LOCAL CAPITAL IFN S.A.'),

@@ -469,6 +469,324 @@ function language_prefix(string $language): string
     return $language === DEFAULT_LANGUAGE ? '' : '/' . $language;
 }
 
+function normalize_route_path(string $path): string
+{
+    $path = '/' . ltrim($path ?: '/', '/');
+    $path = $path === '//' ? '/' : $path;
+    return $path === '/' ? '/' : rtrim($path, '/');
+}
+
+function localized_page_routes(): array
+{
+    return [
+        'ro' => [
+            'home' => '/',
+            'about' => '/despre-noi',
+            'contract' => '/contract',
+            'contact' => '/contact',
+            'gdpr' => '/gdpr',
+            'privacy' => '/politica-privind-datele-personale',
+            'terms' => '/termene-si-conditii',
+        ],
+        'en' => [
+            'home' => '/',
+            'about' => '/about-us',
+            'contract' => '/loan-types',
+            'contact' => '/contact',
+            'gdpr' => '/gdpr',
+            'privacy' => '/personal-data-policy',
+            'terms' => '/terms-and-conditions',
+        ],
+        'hu' => [
+            'home' => '/',
+            'about' => '/rolunk',
+            'contract' => '/hitelek',
+            'contact' => '/kapcsolat',
+            'gdpr' => '/gdpr',
+            'privacy' => '/szemelyes-adatok-kezelese',
+            'terms' => '/altalanos-szerzodesi-feltetelek',
+        ],
+    ];
+}
+
+function blog_index_routes(): array
+{
+    return [
+        'ro' => '/blog',
+        'en' => '/news',
+        'hu' => '/hirek',
+    ];
+}
+
+function case_study_archive_routes(): array
+{
+    return [
+        'ro' => '/finlon-case-study-category/business',
+        'en' => '/case-studies/business',
+        'hu' => '/esettanulmanyok/uzlet',
+    ];
+}
+
+function post_type_prefixes(): array
+{
+    return [
+        'post' => [
+            'ro' => '/blog',
+            'en' => '/articles',
+            'hu' => '/cikkek',
+        ],
+        'service' => [
+            'ro' => '/service',
+            'en' => '/services',
+            'hu' => '/szolgaltatasok',
+        ],
+        'case_study' => [
+            'ro' => '/case_study',
+            'en' => '/case-studies',
+            'hu' => '/esettanulmanyok',
+        ],
+    ];
+}
+
+function post_slug_routes(): array
+{
+    return [
+        'post' => [
+            'credit-rapid-cu-buletinul' => [
+                'ro' => 'credit-rapid-cu-buletinul',
+                'en' => 'fast-credit-with-identity-card',
+                'hu' => 'gyors-hitel-szemelyi-igazolvannyal',
+            ],
+        ],
+        'service' => [
+            'auto-car-loan' => [
+                'ro' => 'credit-pentru-masina-noua',
+                'en' => 'new-car-loan',
+                'hu' => 'uj-auto-hitel',
+            ],
+            'business-loan' => [
+                'ro' => 'credit-pentru-proiecte-si-investitii',
+                'en' => 'projects-and-investments-loan',
+                'hu' => 'projektek-es-befektetesek-hitele',
+            ],
+            'education-loan' => [
+                'ro' => 'credit-pentru-educatie',
+                'en' => 'education-loan',
+                'hu' => 'oktatasi-hitel',
+            ],
+            'personal-loan' => [
+                'ro' => 'credit-pentru-nevoi-personale',
+                'en' => 'personal-loan',
+                'hu' => 'szemelyi-kolcson',
+            ],
+            'property-loan' => [
+                'ro' => 'credit-pentru-locuinta',
+                'en' => 'home-improvement-loan',
+                'hu' => 'lakasfelujitasi-hitel',
+            ],
+            'wedding-loan' => [
+                'ro' => 'credit-pentru-evenimente-de-familie',
+                'en' => 'family-events-loan',
+                'hu' => 'csaladi-esemenyek-hitele',
+            ],
+        ],
+        'case_study' => [
+            'business-planning' => [
+                'ro' => 'planificare-business',
+                'en' => 'business-planning',
+                'hu' => 'uzleti-tervezes',
+            ],
+            'business-tie-ups' => [
+                'ro' => 'parteneriate-business',
+                'en' => 'business-partnerships',
+                'hu' => 'uzleti-egyuttmukodesek',
+            ],
+            'meger-acquistion' => [
+                'ro' => 'fuziuni-si-achizitii',
+                'en' => 'mergers-and-acquisitions',
+                'hu' => 'fuzio-es-felvasarlas',
+            ],
+            'personal-banking' => [
+                'ro' => 'servicii-financiare-personale',
+                'en' => 'personal-banking',
+                'hu' => 'szemelyes-penzugyek',
+            ],
+        ],
+    ];
+}
+
+function route_page_key_for_path(string $language, string $path): ?string
+{
+    $language = normalize_language($language);
+    $path = normalize_route_path($path);
+    $routes = localized_page_routes();
+
+    foreach ([$routes[$language] ?? [], $routes[DEFAULT_LANGUAGE]] as $allowedRoutes) {
+        foreach ($allowedRoutes as $key => $routePath) {
+            if (normalize_route_path($routePath) === $path) {
+                return $key;
+            }
+        }
+    }
+
+    return null;
+}
+
+function route_any_page_key_for_path(string $path): ?string
+{
+    $path = normalize_route_path($path);
+    foreach (localized_page_routes() as $routes) {
+        foreach ($routes as $key => $routePath) {
+            if (normalize_route_path($routePath) === $path) {
+                return $key;
+            }
+        }
+    }
+
+    return null;
+}
+
+function route_page_path(string $key, string $language): ?string
+{
+    $language = normalize_language($language);
+    $routes = localized_page_routes();
+    return $routes[$language][$key] ?? $routes[DEFAULT_LANGUAGE][$key] ?? null;
+}
+
+function blog_index_path(string $language): string
+{
+    $language = normalize_language($language);
+    $routes = blog_index_routes();
+    return $routes[$language] ?? $routes[DEFAULT_LANGUAGE];
+}
+
+function blog_index_path_matches(string $language, string $path): bool
+{
+    $path = normalize_route_path($path);
+    return in_array($path, array_unique([blog_index_path($language), blog_index_path(DEFAULT_LANGUAGE)]), true);
+}
+
+function case_study_archive_path(string $language): string
+{
+    $language = normalize_language($language);
+    $routes = case_study_archive_routes();
+    return $routes[$language] ?? $routes[DEFAULT_LANGUAGE];
+}
+
+function case_study_archive_path_matches(string $language, string $path): bool
+{
+    $path = normalize_route_path($path);
+    return in_array($path, array_unique([case_study_archive_path($language), case_study_archive_path(DEFAULT_LANGUAGE)]), true);
+}
+
+function canonical_slug_for_route(string $sourceType, string $slug): string
+{
+    $sourceType = $sourceType ?: 'post';
+    $slug = trim($slug, '/');
+    foreach (post_slug_routes()[$sourceType] ?? [] as $canonical => $localizedSlugs) {
+        if ($slug === $canonical || in_array($slug, $localizedSlugs, true)) {
+            return $canonical;
+        }
+    }
+
+    return $slug;
+}
+
+function localized_slug_for_route(string $sourceType, string $slug, string $language): string
+{
+    $sourceType = $sourceType ?: 'post';
+    $language = normalize_language($language);
+    $canonical = canonical_slug_for_route($sourceType, $slug);
+    return post_slug_routes()[$sourceType][$canonical][$language] ?? $canonical;
+}
+
+function post_route_from_path(string $path): ?array
+{
+    $path = normalize_route_path($path);
+    foreach (post_type_prefixes() as $sourceType => $prefixes) {
+        foreach ($prefixes as $prefix) {
+            $prefix = normalize_route_path($prefix);
+            if (str_starts_with($path . '/', $prefix . '/')) {
+                $slug = trim(substr($path, strlen($prefix)), '/');
+                if ($slug !== '') {
+                    return [
+                        'source_type' => $sourceType,
+                        'slug' => canonical_slug_for_route($sourceType, $slug),
+                    ];
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function localized_post_path_values(string $language, string $sourceType, string $slug, ?string $fallbackPath = null): string
+{
+    $language = normalize_language($language);
+    $sourceType = $sourceType ?: 'post';
+    $prefixes = post_type_prefixes();
+    if (!isset($prefixes[$sourceType])) {
+        return localized_route_path($fallbackPath ?: ('/blog/' . $slug), $language);
+    }
+
+    return $prefixes[$sourceType][$language] . '/' . localized_slug_for_route($sourceType, $slug, $language);
+}
+
+function localized_post_path(array $post, ?string $language = null): string
+{
+    $language = normalize_language($language ?? ($post['language_code'] ?? DEFAULT_LANGUAGE));
+    return localized_post_path_values(
+        $language,
+        (string) ($post['source_type'] ?? 'post'),
+        (string) ($post['slug'] ?? ''),
+        (string) ($post['path'] ?? '')
+    );
+}
+
+function post_path_matches(array $post, string $language, string $path): bool
+{
+    $path = normalize_route_path($path);
+    $sourceType = (string) ($post['source_type'] ?? 'post');
+    $slug = (string) ($post['slug'] ?? '');
+    $storedPath = normalize_route_path((string) ($post['path'] ?? ''));
+
+    if ($storedPath === $path || normalize_route_path(localized_post_path($post, $language)) === $path) {
+        return true;
+    }
+
+    $route = post_route_from_path($path);
+    return $route !== null
+        && $route['source_type'] === $sourceType
+        && $route['slug'] === canonical_slug_for_route($sourceType, $slug);
+}
+
+function localized_route_path(string $path, string $language): string
+{
+    $language = normalize_language($language);
+    $path = normalize_route_path($path);
+
+    $pageKey = route_any_page_key_for_path($path);
+    if ($pageKey !== null) {
+        return route_page_path($pageKey, $language) ?? $path;
+    }
+
+    if (blog_index_path_matches($language, $path) || in_array($path, blog_index_routes(), true)) {
+        return blog_index_path($language);
+    }
+
+    if (case_study_archive_path_matches($language, $path) || in_array($path, case_study_archive_routes(), true)) {
+        return case_study_archive_path($language);
+    }
+
+    $route = post_route_from_path($path);
+    if ($route !== null) {
+        return localized_post_path_values($language, $route['source_type'], $route['slug'], $path);
+    }
+
+    return $path;
+}
+
 function localized_path(string $path, ?string $language = null): string
 {
     if (preg_match('#^https?://#', $path)) {
@@ -476,8 +794,7 @@ function localized_path(string $path, ?string $language = null): string
     }
 
     $language = normalize_language($language ?? ($_GET['lang'] ?? DEFAULT_LANGUAGE));
-    $path = '/' . ltrim($path ?: '/', '/');
-    $path = $path === '//' ? '/' : $path;
+    $path = localized_route_path($path, $language);
 
     if ($language === DEFAULT_LANGUAGE) {
         return $path;
@@ -573,6 +890,12 @@ function load_site(string $language = DEFAULT_LANGUAGE): array
 
 function page_by_path(array $site, string $path): array
 {
+    $language = normalize_language($site['language'] ?? DEFAULT_LANGUAGE);
+    $routeKey = route_page_key_for_path($language, $path);
+    if ($routeKey !== null && isset($site['pages'][$routeKey])) {
+        return [$routeKey, $site['pages'][$routeKey]];
+    }
+
     if ($path === '/') {
         return ['home', $site['pages']['home'] ?? null];
     }
@@ -604,8 +927,9 @@ function verify_csrf(): void
 {
     $token = $_POST['csrf'] ?? '';
     if (!is_string($token) || !hash_equals($_SESSION['csrf'] ?? '', $token)) {
+        $language = admin_language();
         http_response_code(403);
-        echo render_error_page('Cerere respinsă', 'Tokenul de securitate nu este valid.');
+        echo render_error_page(error_page_text($language, 'rejected_title'), error_page_text($language, 'rejected_message'), $language);
         exit;
     }
 }

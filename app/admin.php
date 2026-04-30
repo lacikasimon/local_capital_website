@@ -67,20 +67,82 @@ function login_page(string $message = ''): string
 </html>';
 }
 
+function ensure_admin_login_attempts_table(): void
+{
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    db()->exec('CREATE TABLE IF NOT EXISTS admin_login_attempts (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        attempt_key CHAR(64) NOT NULL,
+        ip_hash CHAR(64) NOT NULL,
+        username_hash CHAR(64) NOT NULL,
+        attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_admin_login_attempt_key_time (attempt_key, attempted_at),
+        KEY idx_admin_login_ip_time (ip_hash, attempted_at),
+        KEY idx_admin_login_attempt_time (attempted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
+    $ready = true;
+}
+
+function admin_login_attempt_key(string $username): string
+{
+    return hash_hmac('sha256', strtolower(trim($username)) . '|' . client_ip_hash(), form_secret());
+}
+
+function admin_username_hash(string $username): string
+{
+    return hash_hmac('sha256', strtolower(trim($username)), form_secret());
+}
+
+function admin_login_rate_limited(string $username): bool
+{
+    ensure_admin_login_attempts_table();
+
+    db()->exec('DELETE FROM admin_login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 DAY)');
+
+    $stmt = db()->prepare('SELECT COUNT(*) FROM admin_login_attempts WHERE (attempt_key = ? OR ip_hash = ?) AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
+    $stmt->execute([admin_login_attempt_key($username), client_ip_hash()]);
+
+    return (int) $stmt->fetchColumn() >= 8;
+}
+
+function record_admin_login_failure(string $username): void
+{
+    ensure_admin_login_attempts_table();
+
+    $stmt = db()->prepare('INSERT INTO admin_login_attempts (attempt_key, ip_hash, username_hash) VALUES (?, ?, ?)');
+    $stmt->execute([admin_login_attempt_key($username), client_ip_hash(), admin_username_hash($username)]);
+}
+
+function clear_admin_login_failures(string $username): void
+{
+    ensure_admin_login_attempts_table();
+
+    $stmt = db()->prepare('DELETE FROM admin_login_attempts WHERE attempt_key = ? OR ip_hash = ?');
+    $stmt->execute([admin_login_attempt_key($username), client_ip_hash()]);
+}
+
 function handle_login_post(): void
 {
-    $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
-    if ($_SESSION['login_attempts'] > 10) {
+    $username = trim((string) ($_POST['username'] ?? ''));
+
+    if (admin_login_rate_limited($username)) {
         http_response_code(429);
         echo login_page('Prea multe încercări. Te rugăm să aștepți câteva minute.');
         return;
     }
 
     $stmt = db()->prepare('SELECT id, username, password_hash FROM admin_users WHERE username = ?');
-    $stmt->execute([$_POST['username'] ?? '']);
+    $stmt->execute([$username]);
     $user = $stmt->fetch();
 
     if (!$user || !password_verify((string) ($_POST['password'] ?? ''), $user['password_hash'])) {
+        record_admin_login_failure($username);
         http_response_code(401);
         echo login_page('Datele de autentificare nu sunt corecte.');
         return;
@@ -88,7 +150,7 @@ function handle_login_post(): void
 
     session_regenerate_id(true);
     $_SESSION['admin_user_id'] = (int) $user['id'];
-    $_SESSION['login_attempts'] = 0;
+    clear_admin_login_failures($username);
     csrf_token();
     redirect('/admin');
 }
@@ -246,7 +308,7 @@ function render_page_editor(array $site, array $admin, string $key): ?string
     return admin_layout($site, $admin, $body, $page['title']);
 }
 
-function render_post_editor(array $site, array $admin, string $slug): ?string
+function render_post_editor(array $site, array $admin, string $slug, string $message = '', ?array $oldPost = null): ?string
 {
     $post = [
         'slug' => '',
@@ -270,9 +332,14 @@ function render_post_editor(array $site, array $admin, string $slug): ?string
         }
     }
 
+    if ($oldPost !== null) {
+        $post = array_merge($post, $oldPost);
+    }
+
     $body = '<section class="admin-card wide">
     <p class="eyebrow">' . ($slug === 'new' ? 'Articol nou' : 'Editare articol') . '</p>
     <h1>' . e($post['title'] ?: 'Articol nou') . '</h1>
+    ' . ($message ? '<p class="form-message error">' . e($message) . '</p>' : '') . '
     <form class="admin-form" action="/admin/posts/' . e($slug) . '?lang=' . e($site['language']) . '" method="post">
       <input type="hidden" name="lang" value="' . e($site['language']) . '">
       <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
@@ -308,7 +375,7 @@ function save_page(array $site, string $key): void
 {
     if (empty($site['pages'][$key])) {
         http_response_code(404);
-        echo render_error_page('Pagina nu a fost găsită', 'Adresa cerută nu există.');
+        echo render_error_page(error_page_text($site['language'], 'not_found_title'), error_page_text($site['language'], 'not_found_message'), $site['language']);
         exit;
     }
 
@@ -331,21 +398,42 @@ function save_page(array $site, string $key): void
     ]);
 }
 
-function save_post(string $originalSlug): string
+function post_slug_conflicts(string $language, string $sourceType, string $slug, ?string $excludeSlug = null): bool
+{
+    $sql = 'SELECT COUNT(*) FROM posts WHERE language_code = ? AND source_type = ? AND slug = ?';
+    $params = [$language, $sourceType, $slug];
+
+    if ($excludeSlug !== null) {
+        $sql .= ' AND slug <> ?';
+        $params[] = $excludeSlug;
+    }
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function save_post(array $site, array $admin, string $originalSlug): string
 {
     $language = admin_language();
     $title = trim((string) ($_POST['title'] ?? 'Articol fără titlu'));
     $slug = slugify(trim((string) ($_POST['slug'] ?? '')) ?: $title);
+    if ($slug === '') {
+        $slug = 'articol-' . date('YmdHis');
+    }
     $existing = null;
+    $sourceType = 'post';
     if ($originalSlug !== 'new') {
         $stmt = db()->prepare('SELECT source_type, path FROM posts WHERE language_code = ? AND slug = ? LIMIT 1');
         $stmt->execute([$language, $originalSlug]);
         $existing = $stmt->fetch() ?: null;
         if (!$existing) {
             http_response_code(404);
-            echo render_error_page('Pagina nu a fost găsită', 'Articolul cerut nu există.');
+            echo render_error_page(error_page_text($language, 'not_found_title'), error_page_text($language, 'not_found_message'), $language);
             exit;
         }
+        $sourceType = $existing['source_type'] ?? 'post';
         if (($existing['source_type'] ?? 'post') !== 'post') {
             $slug = $originalSlug;
         }
@@ -356,17 +444,23 @@ function save_post(string $originalSlug): string
         'date' => $_POST['date'] ?? date('Y-m-d'),
         'excerpt' => $_POST['excerpt'] ?: plain_text((string) ($_POST['body'] ?? '')),
         'body' => $_POST['body'] ?? '',
-        'published' => isset($_POST['published']) ? 1 : 0,
+        'published' => isset($_POST['published']),
     ];
+
+    $excludeSlug = $originalSlug === 'new' ? null : $originalSlug;
+    if (post_slug_conflicts($language, $sourceType, $post['slug'], $excludeSlug)) {
+        http_response_code(422);
+        echo render_post_editor($site, $admin, $originalSlug, 'Slugul este deja folosit de un alt articol. Alege un slug unic.', $post);
+        exit;
+    }
 
     if ($originalSlug === 'new') {
         $stmt = db()->prepare('INSERT INTO posts (language_code, source_type, slug, path, source_url, title, post_date, excerpt, body, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$language, 'post', $post['slug'], '/blog/' . $post['slug'], null, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published']]);
+        $stmt->execute([$language, 'post', $post['slug'], '/blog/' . $post['slug'], null, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'] ? 1 : 0]);
     } else {
-        $sourceType = $existing['source_type'] ?? 'post';
         $path = $sourceType === 'post' ? '/blog/' . $post['slug'] : ($existing['path'] ?? '');
         $stmt = db()->prepare('UPDATE posts SET slug = ?, path = ?, title = ?, post_date = ?, excerpt = ?, body = ?, published = ?, updated_at = CURRENT_TIMESTAMP WHERE language_code = ? AND source_type = ? AND slug = ?');
-        $stmt->execute([$post['slug'], $path, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'], $language, $sourceType, $originalSlug]);
+        $stmt->execute([$post['slug'], $path, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'] ? 1 : 0, $language, $sourceType, $originalSlug]);
     }
 
     return $post['slug'];
