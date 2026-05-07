@@ -13,6 +13,7 @@ $files = [
     ROOT_DIR . '/database/schema.sql',
     ROOT_DIR . '/database/imported-wordpress.sql',
     ROOT_DIR . '/database/content-overrides.sql',
+    ROOT_DIR . '/database/ifn-trust-content.sql',
 ];
 
 foreach ($files as $file) {

@@ -370,6 +370,10 @@ h3 {
   max-width: 760px;
 }
 
+.section-heading.compact {
+  margin-bottom: 18px;
+}
+
 .section-heading p:not(.eyebrow) {
   color: var(--muted);
 }
@@ -420,6 +424,10 @@ h3 {
 .text-card,
 .post-card {
   padding: 24px;
+}
+
+.collection-block {
+  margin-top: 30px;
 }
 
 .text-card,
@@ -526,6 +534,116 @@ textarea:focus {
   display: grid;
   gap: 12px;
   max-width: 920px;
+}
+
+.legal-band {
+  padding-top: clamp(28px, 5vw, 56px);
+  padding-bottom: clamp(28px, 5vw, 56px);
+}
+
+.legal-panel,
+.loan-example {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: 28px;
+  align-items: start;
+  border: 1px solid rgba(184, 148, 63, 0.34);
+  border-radius: 8px;
+  background: #fffdf7;
+  box-shadow: var(--shadow);
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.legal-panel p,
+.loan-example p,
+.loan-example-note {
+  color: var(--muted);
+}
+
+.legal-list,
+.loan-example-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.legal-list div,
+.loan-example-list div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid rgba(31, 37, 32, 0.08);
+  padding-bottom: 10px;
+}
+
+.legal-list dt,
+.loan-example-list dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.legal-list dd,
+.loan-example-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.responsible-notice {
+  max-width: 900px;
+  margin-top: 28px;
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: #fff8e4;
+  padding: 18px 20px;
+}
+
+.responsible-notice strong {
+  color: var(--brand-dark);
+}
+
+.responsible-notice p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.loan-example-band,
+.documents-band {
+  padding-top: clamp(28px, 5vw, 56px);
+  padding-bottom: clamp(28px, 5vw, 56px);
+}
+
+.loan-example-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-top: 1px solid rgba(31, 37, 32, 0.08);
+  padding-top: 12px;
+}
+
+.document-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 920px;
+}
+
+.document-link {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--brand-dark);
+  font-weight: 800;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.document-link:hover {
+  border-color: rgba(184, 148, 63, 0.52);
+  color: var(--ink);
 }
 
 .faq-item {
@@ -638,6 +756,19 @@ textarea:focus {
 
 .site-footer img {
   margin-bottom: 12px;
+}
+
+.footer-legal-lines {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-legal-lines li {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.88rem;
 }
 
 .footer-regulatory-logos {
@@ -1075,9 +1206,18 @@ legend {
   .service-grid,
   .trust-strip,
   .contact-layout,
+  .legal-panel,
+  .loan-example,
+  .document-list,
   .footer-grid,
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .legal-list div,
+  .loan-example-list div {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 
   .trust-strip {

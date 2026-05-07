@@ -80,24 +80,40 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Politica privind datele personale',
             'footer_data_rights' => 'Informare drepturi persoane vizate',
             'footer_retention' => 'Politica de retenție date',
+            'legal_identity_title' => 'Date de identificare',
+            'legal_identity_intro' => 'Informații publice despre operatorul serviciilor Local Capital.',
+            'legal_name' => 'Denumire legală',
+            'legal_registry' => 'Registrul Comerțului',
+            'legal_cui' => 'CUI',
+            'legal_bnr' => 'Registrul BNR',
+            'legal_capital' => 'Capital social',
+            'legal_address' => 'Sediu / adresă publică',
+            'legal_email' => 'Email',
+            'legal_complaints' => 'Petiții și reclamații',
+            'legal_data_protection' => 'Protecția datelor',
+            'responsible_title' => 'Creditare responsabilă',
+            'responsible_default' => 'Creditul reprezintă o obligație financiară. Analizează costul total, DAE, durata și capacitatea de rambursare înainte de semnarea contractului.',
+            'loan_example_title' => 'Exemplu orientativ de cost',
+            'loan_example_intro' => 'Valorile finale depind de suma solicitată, durata contractului, analiza eligibilității și oferta comunicată înainte de semnare.',
+            'documents_title' => 'Documente și informări',
             'cookie_title' => 'Preferințe cookie',
             'cookie_text' => 'Folosim cookie-uri necesare pentru funcționarea site-ului. Cookie-urile opționale vor fi folosite doar după acordul tău.',
             'cookie_privacy' => 'Vezi politica privind datele personale',
             'cookie_necessary' => 'Doar necesare',
             'cookie_accept_all' => 'Accept toate',
             'menu_toggle' => 'Meniu',
-            'trust_aria' => 'Avantaje rapide',
-            'trust_time_value' => '2 ore',
-            'trust_time_label' => 'transfer rapid după aprobare',
-            'trust_direct_value' => 'Direct',
-            'trust_direct_label' => 'bani transferați pe card',
+            'trust_aria' => 'Indicatori de încredere',
+            'trust_time_value' => 'Pași clari',
+            'trust_time_label' => 'proces explicat înainte de semnare',
+            'trust_direct_value' => 'Costuri',
+            'trust_direct_label' => 'DAE și rambursare discutate transparent',
             'trust_ifn_value' => 'IFN',
             'trust_ifn_label' => 'soluții flexibile pentru persoane fizice',
             'home_advantages' => 'Avantaje',
             'home_services' => 'Servicii',
             'home_process' => 'Proces simplu',
-            'home_cta_title' => 'Ai nevoie de o soluție rapidă?',
-            'home_cta_text' => 'Trimite-ne un mesaj și revenim cu pașii potriviți pentru situația ta.',
+            'home_cta_title' => 'Vrei să înțelegi pașii înainte de aplicare?',
+            'home_cta_text' => 'Trimite-ne un mesaj și revenim cu informațiile potrivite despre eligibilitate, costuri și rambursare.',
             'home_cta_button' => 'Contactează-ne',
             'contact_success' => 'Mesajul a fost trimis. Îți vom răspunde în timpul programului de lucru.',
             'contact_error_title' => 'Verifică formularul:',
@@ -113,11 +129,11 @@ function ui_text(array $site, string $key): string
             'contact_send' => 'Trimite',
             'contact_facts' => 'Date de contact',
             'contact_address' => 'Adresă',
-            'blog_title' => 'Conținut importat și informații utile',
-            'blog_intro' => 'Articole, servicii și studii de caz curățate din vechiul site.',
+            'blog_title' => 'Ghiduri și informații utile',
+            'blog_intro' => 'Articole și explicații despre creditare, costuri, rambursare și utilizarea responsabilă a unui împrumut.',
             'blog_empty' => 'Nu există articole publicate momentan.',
-            'blog_page_title' => 'Conținut importat',
-            'blog_description' => 'Conținut importat și informații utile Local Capital',
+            'blog_page_title' => 'Ghiduri și informații utile',
+            'blog_description' => 'Informații utile Local Capital despre creditare responsabilă, DAE și rambursare',
             'case_eyebrow' => 'Studiu de caz',
             'case_intro' => 'Arhivă de studii de caz importată din vechiul site Local Capital.',
             'case_empty' => 'Nu există studii de caz publicate momentan.',
@@ -135,24 +151,40 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Personal data policy',
             'footer_data_rights' => 'Data subject rights notice',
             'footer_retention' => 'Data retention policy',
+            'legal_identity_title' => 'Legal identification',
+            'legal_identity_intro' => 'Public information about the operator of the Local Capital services.',
+            'legal_name' => 'Legal name',
+            'legal_registry' => 'Trade Register',
+            'legal_cui' => 'Tax ID',
+            'legal_bnr' => 'BNR register',
+            'legal_capital' => 'Share capital',
+            'legal_address' => 'Registered / public address',
+            'legal_email' => 'Email',
+            'legal_complaints' => 'Petitions and complaints',
+            'legal_data_protection' => 'Data protection',
+            'responsible_title' => 'Responsible lending',
+            'responsible_default' => 'Credit is a financial obligation. Review the total cost, APR, duration, and your repayment capacity before signing the contract.',
+            'loan_example_title' => 'Indicative cost example',
+            'loan_example_intro' => 'Final values depend on the requested amount, contract duration, eligibility assessment, and the offer communicated before signing.',
+            'documents_title' => 'Documents and notices',
             'cookie_title' => 'Cookie preferences',
             'cookie_text' => 'We use necessary cookies to keep the website working. Optional cookies will only be used after your consent.',
             'cookie_privacy' => 'View the personal data policy',
             'cookie_necessary' => 'Necessary only',
             'cookie_accept_all' => 'Accept all',
             'menu_toggle' => 'Menu',
-            'trust_aria' => 'Quick advantages',
-            'trust_time_value' => '2 hours',
-            'trust_time_label' => 'fast transfer after approval',
-            'trust_direct_value' => 'Direct',
-            'trust_direct_label' => 'money transferred to your card',
+            'trust_aria' => 'Trust indicators',
+            'trust_time_value' => 'Clear steps',
+            'trust_time_label' => 'process explained before signing',
+            'trust_direct_value' => 'Costs',
+            'trust_direct_label' => 'APR and repayment discussed transparently',
             'trust_ifn_value' => 'IFN',
             'trust_ifn_label' => 'flexible solutions for individuals',
             'home_advantages' => 'Advantages',
             'home_services' => 'Services',
             'home_process' => 'Simple process',
-            'home_cta_title' => 'Need a fast solution?',
-            'home_cta_text' => 'Send us a message and we will get back with the right steps for your situation.',
+            'home_cta_title' => 'Want to understand the steps before applying?',
+            'home_cta_text' => 'Send us a message and we will reply with information about eligibility, costs, and repayment.',
             'home_cta_button' => 'Contact us',
             'contact_success' => 'Message sent. We will reply during business hours.',
             'contact_error_title' => 'Check the form:',
@@ -168,11 +200,11 @@ function ui_text(array $site, string $key): string
             'contact_send' => 'Send',
             'contact_facts' => 'Contact details',
             'contact_address' => 'Address',
-            'blog_title' => 'Imported content and useful information',
-            'blog_intro' => 'Articles, services and case studies cleaned from the old website.',
+            'blog_title' => 'Guides and useful information',
+            'blog_intro' => 'Articles and explanations about credit, costs, repayment, and responsible borrowing.',
             'blog_empty' => 'There are no published articles at the moment.',
-            'blog_page_title' => 'Imported content',
-            'blog_description' => 'Imported Local Capital content and useful information',
+            'blog_page_title' => 'Guides and useful information',
+            'blog_description' => 'Useful Local Capital information about responsible lending, APR, and repayment',
             'case_eyebrow' => 'Case study',
             'case_intro' => 'Case study archive imported from the old Local Capital website.',
             'case_empty' => 'There are no published case studies at the moment.',
@@ -190,24 +222,40 @@ function ui_text(array $site, string $key): string
             'footer_privacy' => 'Személyes adatok kezelése',
             'footer_data_rights' => 'Érintetti jogokról szóló tájékoztató',
             'footer_retention' => 'Adatmegőrzési szabályzat',
+            'legal_identity_title' => 'Jogi azonosító adatok',
+            'legal_identity_intro' => 'Nyilvános információk a Local Capital szolgáltatásainak üzemeltetőjéről.',
+            'legal_name' => 'Jogi név',
+            'legal_registry' => 'Cégnyilvántartás',
+            'legal_cui' => 'Adóazonosító',
+            'legal_bnr' => 'BNR nyilvántartás',
+            'legal_capital' => 'Jegyzett tőke',
+            'legal_address' => 'Székhely / nyilvános cím',
+            'legal_email' => 'E-mail',
+            'legal_complaints' => 'Panaszok és kérelmek',
+            'legal_data_protection' => 'Adatvédelem',
+            'responsible_title' => 'Felelős hitelezés',
+            'responsible_default' => 'A hitel pénzügyi kötelezettség. Aláírás előtt vizsgáld meg a teljes költséget, a DAE/THM értéket, a futamidőt és a törlesztési képességedet.',
+            'loan_example_title' => 'Tájékoztató költségpélda',
+            'loan_example_intro' => 'A végleges értékek az igényelt összegtől, a szerződés futamidejétől, az elbírálástól és az aláírás előtt közölt ajánlattól függenek.',
+            'documents_title' => 'Dokumentumok és tájékoztatók',
             'cookie_title' => 'Cookie beállítások',
             'cookie_text' => 'Az oldal működéséhez szükséges sütiket használunk. Az opcionális sütiket csak a hozzájárulásod után használjuk.',
             'cookie_privacy' => 'Adatkezelési tájékoztató megnyitása',
             'cookie_necessary' => 'Csak szükséges',
             'cookie_accept_all' => 'Mindet elfogadom',
             'menu_toggle' => 'Menü',
-            'trust_aria' => 'Gyors előnyök',
-            'trust_time_value' => '2 óra',
-            'trust_time_label' => 'gyors utalás jóváhagyás után',
-            'trust_direct_value' => 'Közvetlenül',
-            'trust_direct_label' => 'pénz a kártyádra utalva',
+            'trust_aria' => 'Bizalmi elemek',
+            'trust_time_value' => 'Világos lépések',
+            'trust_time_label' => 'a folyamat aláírás előtt érthető',
+            'trust_direct_value' => 'Költségek',
+            'trust_direct_label' => 'DAE/THM és törlesztés átláthatóan',
             'trust_ifn_value' => 'IFN',
             'trust_ifn_label' => 'rugalmas megoldások magánszemélyeknek',
             'home_advantages' => 'Előnyök',
             'home_services' => 'Szolgáltatások',
             'home_process' => 'Egyszerű folyamat',
-            'home_cta_title' => 'Gyors megoldásra van szükséged?',
-            'home_cta_text' => 'Írj nekünk, és visszajelzünk a helyzetedhez illő lépésekkel.',
+            'home_cta_title' => 'Szeretnéd megérteni a lépéseket igénylés előtt?',
+            'home_cta_text' => 'Írj nekünk, és visszajelzünk a jogosultságról, költségekről és törlesztési lehetőségekről.',
             'home_cta_button' => 'Kapcsolatfelvétel',
             'contact_success' => 'Üzenetedet elküldtük. Munkaidőben válaszolunk.',
             'contact_error_title' => 'Ellenőrizd az űrlapot:',
@@ -223,11 +271,11 @@ function ui_text(array $site, string $key): string
             'contact_send' => 'Küldés',
             'contact_facts' => 'Elérhetőségek',
             'contact_address' => 'Cím',
-            'blog_title' => 'Importált tartalom és hasznos információk',
-            'blog_intro' => 'A régi oldalról megtisztított cikkek, szolgáltatások és esettanulmányok.',
+            'blog_title' => 'Útmutatók és hasznos információk',
+            'blog_intro' => 'Cikkek és magyarázatok a hitelezésről, költségekről, törlesztésről és felelős hitelfelvételről.',
             'blog_empty' => 'Jelenleg nincs közzétett cikk.',
-            'blog_page_title' => 'Importált tartalom',
-            'blog_description' => 'Importált Local Capital tartalom és hasznos információk',
+            'blog_page_title' => 'Útmutatók és hasznos információk',
+            'blog_description' => 'Hasznos Local Capital információk felelős hitelezésről, DAE/THM-ről és törlesztésről',
             'case_eyebrow' => 'Esettanulmány',
             'case_intro' => 'A régi Local Capital weboldalról importált esettanulmány-archívum.',
             'case_empty' => 'Jelenleg nincs közzétett esettanulmány.',
@@ -349,6 +397,41 @@ function build_structured_data(array $site, array $options): array
             'areaServed' => 'RO',
             'availableLanguage' => array_map('language_label', SUPPORTED_LANGUAGES),
         ]],
+    ];
+
+    $identifiers = [];
+
+    if (!empty($settings['cui'])) {
+        $organization['taxID'] = $settings['cui'];
+        $identifiers[] = [
+            '@type' => 'PropertyValue',
+            'propertyID' => 'CUI',
+            'value' => $settings['cui'],
+        ];
+    }
+    if (!empty($settings['registrationNumber'])) {
+        $identifiers[] = [
+            '@type' => 'PropertyValue',
+            'propertyID' => 'Registration number',
+            'value' => $settings['registrationNumber'],
+        ];
+    }
+    if (!empty($settings['bnrRegistryNumber'])) {
+        $identifiers[] = [
+            '@type' => 'PropertyValue',
+            'propertyID' => $settings['bnrRegistryType'] ?? 'BNR registry',
+            'value' => $settings['bnrRegistryNumber'],
+        ];
+    }
+    if ($identifiers) {
+        $organization['identifier'] = $identifiers;
+    }
+    $organization['knowsAbout'] = [
+        'credit pentru nevoi personale',
+        'DAE',
+        'costul total al creditului',
+        'creditare responsabila',
+        'rambursare credit',
     ];
 
     if ($servicePosts) {
@@ -579,6 +662,23 @@ function render_cookie_consent_script(): string
 </script>';
 }
 
+function render_footer_legal_lines(array $site): string
+{
+    $settings = $site['settings'];
+    $rows = [
+        public_setting($site, 'legalName'),
+        public_setting($site, 'registrationNumber'),
+        public_setting($site, 'cui'),
+        public_setting($site, 'bnrRegistryNumber'),
+    ];
+    $rows = array_values(array_filter($rows, fn ($value) => trim((string) $value) !== ''));
+    if (!$rows) {
+        return '';
+    }
+
+    return '<ul class="footer-legal-lines"><li>' . implode('</li><li>', array_map('e', $rows)) . '</li></ul>';
+}
+
 function render_footer(array $site): string
 {
     $settings = $site['settings'];
@@ -589,6 +689,7 @@ function render_footer(array $site): string
       <section>
         <img src="/assets/logo.png" alt="' . e($settings['brandName']) . '" width="68" height="61">
         <p>' . e($settings['footerText']) . '</p>
+        ' . render_footer_legal_lines($site) . '
       </section>
       <section>
         <h2>' . e(ui_text($site, 'footer_schedule')) . '</h2>
@@ -659,6 +760,133 @@ function render_text_cards(array $items): string
     return $html;
 }
 
+function public_setting(array $site, string $key): string
+{
+    return trim((string) ($site['settings'][$key] ?? ''));
+}
+
+function render_card_collection(?string $title, array $items): string
+{
+    if (!$items) {
+        return '';
+    }
+
+    $heading = $title ? '<div class="section-heading compact"><h2>' . e($title) . '</h2></div>' : '';
+    return '<section class="collection-block">' . $heading . '<div class="card-grid">' . render_text_cards($items) . '</div></section>';
+}
+
+function render_legal_identity_panel(array $site): string
+{
+    $rows = [
+        'legal_name' => public_setting($site, 'legalName'),
+        'legal_registry' => public_setting($site, 'registrationNumber'),
+        'legal_cui' => public_setting($site, 'cui'),
+        'legal_bnr' => public_setting($site, 'bnrRegistryNumber') ?: public_setting($site, 'bnrRegistryType'),
+        'legal_capital' => public_setting($site, 'shareCapital'),
+        'legal_address' => public_setting($site, 'address'),
+        'legal_email' => public_setting($site, 'email'),
+        'legal_complaints' => public_setting($site, 'complaintsEmail'),
+        'legal_data_protection' => public_setting($site, 'dataProtectionEmail'),
+    ];
+
+    $items = '';
+    foreach ($rows as $labelKey => $value) {
+        if ($value === '') {
+            continue;
+        }
+        $displayValue = filter_var($value, FILTER_VALIDATE_EMAIL)
+            ? '<a href="mailto:' . e($value) . '">' . e($value) . '</a>'
+            : e($value);
+        $items .= '<div><dt>' . e(ui_text($site, $labelKey)) . '</dt><dd>' . $displayValue . '</dd></div>';
+    }
+
+    if ($items === '') {
+        return '';
+    }
+
+    return '<section class="content-band legal-band">
+    <div class="legal-panel">
+      <div>
+        <p class="eyebrow">' . e($site['settings']['brandName']) . '</p>
+        <h2>' . e(ui_text($site, 'legal_identity_title')) . '</h2>
+        <p>' . e(ui_text($site, 'legal_identity_intro')) . '</p>
+      </div>
+      <dl class="legal-list">' . $items . '</dl>
+    </div>
+  </section>';
+}
+
+function render_responsible_notice(array $site, ?string $text = null): string
+{
+    $text = trim((string) ($text ?? '')) ?: ui_text($site, 'responsible_default');
+
+    return '<aside class="responsible-notice">
+    <strong>' . e(ui_text($site, 'responsible_title')) . '</strong>
+    <p>' . e($text) . '</p>
+  </aside>';
+}
+
+function render_loan_example(array $site, mixed $example): string
+{
+    if (!is_array($example)) {
+        return '';
+    }
+
+    $items = [];
+    foreach (($example['items'] ?? []) as $item) {
+        if (!is_array($item) || trim((string) ($item['value'] ?? '')) === '') {
+            continue;
+        }
+        $items[] = '<div><dt>' . e($item['label'] ?? '') . '</dt><dd>' . e($item['value'] ?? '') . '</dd></div>';
+    }
+
+    if (!$items) {
+        return '';
+    }
+
+    $title = trim((string) ($example['title'] ?? '')) ?: ui_text($site, 'loan_example_title');
+    $intro = trim((string) ($example['intro'] ?? '')) ?: ui_text($site, 'loan_example_intro');
+    $note = trim((string) ($example['note'] ?? ''));
+
+    return '<section class="content-band loan-example-band">
+    <div class="loan-example">
+      <div>
+        <p class="eyebrow">DAE</p>
+        <h2>' . e($title) . '</h2>
+        <p>' . e($intro) . '</p>
+      </div>
+      <dl class="loan-example-list">' . implode('', $items) . '</dl>
+      ' . ($note !== '' ? '<p class="loan-example-note">' . e($note) . '</p>' : '') . '
+    </div>
+  </section>';
+}
+
+function render_document_links(array $site, array $links): string
+{
+    if (!$links) {
+        return '';
+    }
+
+    $items = '';
+    foreach ($links as $link) {
+        if (!is_array($link) || empty($link['href']) || empty($link['label'])) {
+            continue;
+        }
+        $items .= '<a class="document-link" href="' . e($link['href']) . '">' . e($link['label']) . '</a>';
+    }
+
+    if ($items === '') {
+        return '';
+    }
+
+    return '<section class="content-band documents-band">
+    <div class="section-heading compact">
+      <h2>' . e(ui_text($site, 'documents_title')) . '</h2>
+    </div>
+    <div class="document-list">' . $items . '</div>
+  </section>';
+}
+
 function render_faq_section(array $site, array $items): string
 {
     $faqItems = normalized_faq_items($items);
@@ -722,8 +950,10 @@ function render_home(array $site): string
   <section class="trust-strip" aria-label="' . e(ui_text($site, 'trust_aria')) . '">
     ' . $trust . '
   </section>
+  ' . render_legal_identity_panel($site) . '
   <section class="content-band">
     <div class="prose">' . render_markdown($page['body']) . '</div>
+    ' . render_responsible_notice($site, $page['responsibleNotice'] ?? null) . '
   </section>
   <section class="content-band muted">
     <div class="section-heading">
@@ -747,6 +977,8 @@ function render_home(array $site): string
     </div>
     <div class="card-grid">' . render_text_cards($page['requirements'] ?? []) . '</div>
   </section>
+  ' . render_loan_example($site, $page['loanExample'] ?? null) . '
+  ' . render_document_links($site, $page['documents'] ?? []) . '
   ' . render_faq_section($site, $page['faq'] ?? []) . '
   <section class="cta-band">
     <div>
@@ -770,11 +1002,11 @@ function render_home(array $site): string
 function render_generic_page(array $site, string $key, array $page): string
 {
     $extra = '';
-    foreach (['values', 'products', 'features'] as $collection) {
-        if (!empty($page[$collection]) && is_array($page[$collection])) {
-            $extra .= '<div class="card-grid">' . render_text_cards($page[$collection]) . '</div>';
-        }
-    }
+    $showResponsibleNotice = in_array($key, ['about', 'contract', 'guide'], true);
+    $extra .= render_card_collection($page['valuesTitle'] ?? null, is_array($page['values'] ?? null) ? $page['values'] : []);
+    $extra .= render_card_collection($page['productsTitle'] ?? null, is_array($page['products'] ?? null) ? $page['products'] : []);
+    $extra .= render_card_collection($page['featuresTitle'] ?? null, is_array($page['features'] ?? null) ? $page['features'] : []);
+    $extra .= render_card_collection($page['processTitle'] ?? null, is_array($page['process'] ?? null) ? $page['process'] : []);
 
     $body = '<section class="page-hero">
     <div>
@@ -783,10 +1015,14 @@ function render_generic_page(array $site, string $key, array $page): string
       <p>' . e($page['summary']) . '</p>
     </div>
   </section>
+  ' . (in_array($key, ['about', 'contact'], true) ? render_legal_identity_panel($site) : '') . '
   <section class="content-band">
     <div class="prose">' . render_markdown($page['body']) . '</div>
+    ' . ($showResponsibleNotice ? render_responsible_notice($site, $page['responsibleNotice'] ?? null) : '') . '
     ' . $extra . '
   </section>
+  ' . (in_array($key, ['contract', 'guide'], true) ? render_loan_example($site, $page['loanExample'] ?? null) : '') . '
+  ' . render_document_links($site, $page['documents'] ?? []) . '
   ' . render_faq_section($site, $page['faq'] ?? []);
 
     return public_layout($site, $body, [
@@ -848,7 +1084,10 @@ function render_contact(array $site, array $errors = [], array $old = []): strin
       <p><strong>' . e(ui_text($site, 'contact_address')) . '</strong><br>' . e($settings['address']) . '</p>
       <p><strong>' . e(ui_text($site, 'footer_schedule')) . '</strong><br>' . e($settings['workingHours']) . '<br>' . e($settings['closedHours']) . '</p>
     </aside>
-  </section>';
+  </section>
+  ' . render_legal_identity_panel($site) . '
+  ' . render_document_links($site, $page['documents'] ?? []) . '
+  ' . render_faq_section($site, $page['faq'] ?? []);
 
     return public_layout($site, $body, [
         'active' => 'contact',
@@ -925,6 +1164,7 @@ function render_post_article(array $site, array $post): string
     <h1>' . e($post['title']) . '</h1>
     <p class="lead">' . e($post['excerpt']) . '</p>
     <div class="prose">' . render_markdown($post['body']) . '</div>
+    ' . (($post['source_type'] ?? '') === 'service' ? render_responsible_notice($site) : '') . '
   </article>';
 
     return public_layout($site, $body, [
@@ -1055,7 +1295,7 @@ function render_llms_txt(): string
     $lines = [
         '# Local Capital',
         '',
-        '> LOCAL CAPITAL IFN S.A. is a Romanian non-bank financial institution offering simple and fast credit solutions for personal needs.',
+        '> LOCAL CAPITAL IFN S.A. is a Romanian non-bank financial institution focused on responsible lending, clear application steps, transparent costs, APR, and repayment information.',
         '',
         'Canonical site: ' . app_base_url(),
         'Sitemap: ' . absolute_url('/sitemap.xml'),
@@ -1079,7 +1319,7 @@ function render_llms_txt(): string
             $lines[] = '- Home: ' . absolute_url(localized_path('/', $language)) . ' - ' . plain_text((string) ($home['summary'] ?? ''), 240);
         }
 
-        foreach (['about', 'contract', 'contact'] as $key) {
+        foreach (['about', 'contract', 'guide', 'contact'] as $key) {
             if (empty($site['pages'][$key])) {
                 continue;
             }

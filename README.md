@@ -17,6 +17,7 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 - `database/schema.sql` creates tables and seed content.
 - `database/imported-wordpress.sql` contains the crawled WordPress pages, services, case studies, and link inventory.
 - `database/content-overrides.sql` cleans imported pages, services, and case studies into structured, non-repeating sections based on the original WordPress content.
+- `database/ifn-trust-content.sql` applies the IFN trust, responsible-lending, legal-identification, and multilingual guide content layer.
 - `scripts/import-wordpress-content.js` regenerates the WordPress import SQL from the current public site.
 - `public/downloads/` stores downloaded PDF documents linked from the old site.
 - `scripts/create-admin.php` creates or updates admin users.
@@ -26,7 +27,7 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 ## Install
 
 1. Create a MySQL database and user.
-2. Import `database/schema.sql`, then `database/imported-wordpress.sql`, then `database/content-overrides.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
+2. Import `database/schema.sql`, then `database/imported-wordpress.sql`, then `database/content-overrides.sql`, then `database/ifn-trust-content.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
 3. Copy the config file:
 
 ```sh
