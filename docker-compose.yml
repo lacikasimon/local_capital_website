@@ -33,6 +33,7 @@ services:
       - ./database/imported-wordpress.sql:/docker-entrypoint-initdb.d/002-imported-wordpress.sql:ro
       - ./database/content-overrides.sql:/docker-entrypoint-initdb.d/003-content-overrides.sql:ro
       - ./database/ifn-trust-content.sql:/docker-entrypoint-initdb.d/004-ifn-trust-content.sql:ro
+      - ./database/multilingual-content-fixes.sql:/docker-entrypoint-initdb.d/005-multilingual-content-fixes.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ulocalcapital", "-plocalcapital"]
       interval: 5s

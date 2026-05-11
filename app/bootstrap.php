@@ -1032,9 +1032,9 @@ Ai dreptul de acces, rectificare, ștergere, restricționare, opoziție, portabi
 Folosim măsuri tehnice și organizatorice pentru limitarea accesului neautorizat, protejarea formularului de contact și reducerea riscurilor de securitate.',
             ],
             'privacy' => [
-                'title' => 'Privacy Policy / Politica de confidențialitate',
+                'title' => 'Politica de confidențialitate',
                 'summary' => 'Informații despre datele personale, cookie-uri, formulare și canalele de contact Local Capital.',
-                'body' => '## Privacy Policy / Politica de confidențialitate
+                'body' => '## Politica de confidențialitate
 
 Această pagină explică modul în care LOCAL CAPITAL IFN S.A. gestionează datele personale transmise prin website, inclusiv datele introduse în formularul de contact.
 
@@ -1168,9 +1168,9 @@ Az adatkezelő a LOCAL CAPITAL IFN S.A. Adatvédelmi kérdésekben az info@local
 Kérhető hozzáférés, helyesbítés, törlés, korlátozás, tiltakozás, adathordozhatóság, és panasz nyújtható be az illetékes hatóságnál.',
             ],
             'privacy' => [
-                'title' => 'Privacy Policy / Adatvédelmi tájékoztató',
+                'title' => 'Adatvédelmi tájékoztató',
                 'summary' => 'Információk a személyes adatokról, sütikről, űrlapokról és a Local Capital kapcsolati csatornáiról.',
-                'body' => '## Privacy Policy / Adatvédelmi tájékoztató
+                'body' => '## Adatvédelmi tájékoztató
 
 Ez az oldal bemutatja, hogyan kezeli a LOCAL CAPITAL IFN S.A. a weboldalon keresztül küldött személyes adatokat, beleértve a kapcsolatfelvételi űrlap adatait.
 

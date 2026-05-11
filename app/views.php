@@ -90,10 +90,13 @@ function ui_text(array $site, string $key): string
             'footer_contact' => 'Contact',
             'footer_links' => 'Linkuri utile',
             'footer_terms' => 'Termene și condiții',
-            'footer_privacy' => 'Privacy Policy / Politica de confidențialitate',
+            'footer_privacy' => 'Politica de confidențialitate',
             'footer_accessibility' => 'Accesibilitate',
             'footer_data_rights' => 'Informare drepturi persoane vizate',
             'footer_retention' => 'Politica de retenție date',
+            'footer_regulatory_logos' => 'ANPC, SAL și SOL',
+            'footer_sal_label' => 'Soluționarea alternativă a litigiilor',
+            'footer_sol_label' => 'Soluționarea online a litigiilor',
             'a11y_button' => 'Opțiuni accesibilitate',
             'a11y_title' => 'Opțiuni de accesibilitate',
             'a11y_text_size' => 'Dimensiune text',
@@ -123,7 +126,7 @@ function ui_text(array $site, string $key): string
             'documents_title' => 'Documente și informări',
             'cookie_title' => 'Preferințe cookie',
             'cookie_text' => 'Folosim cookie-uri necesare pentru funcționarea site-ului. Cookie-urile opționale vor fi folosite doar după acordul tău.',
-            'cookie_privacy' => 'Vezi Privacy Policy / politica de confidențialitate',
+            'cookie_privacy' => 'Vezi politica de confidențialitate',
             'cookie_necessary' => 'Doar necesare',
             'cookie_accept_all' => 'Accept toate',
             'menu_toggle' => 'Meniu',
@@ -137,6 +140,7 @@ function ui_text(array $site, string $key): string
             'home_advantages' => 'Avantaje',
             'home_services' => 'Servicii',
             'home_process' => 'Proces simplu',
+            'home_requirements' => 'Pașii unei solicitări',
             'home_cta_title' => 'Vrei să înțelegi pașii înainte de aplicare?',
             'home_cta_text' => 'Trimite-ne un mesaj și revenim cu informațiile potrivite despre eligibilitate, costuri și rambursare.',
             'home_cta_button' => 'Contactează-ne',
@@ -178,6 +182,9 @@ function ui_text(array $site, string $key): string
             'footer_accessibility' => 'Accessibility',
             'footer_data_rights' => 'Data subject rights notice',
             'footer_retention' => 'Data retention policy',
+            'footer_regulatory_logos' => 'ANPC, SAL and ODR',
+            'footer_sal_label' => 'Alternative dispute resolution',
+            'footer_sol_label' => 'Online dispute resolution',
             'a11y_button' => 'Accessibility options',
             'a11y_title' => 'Accessibility options',
             'a11y_text_size' => 'Text size',
@@ -221,6 +228,7 @@ function ui_text(array $site, string $key): string
             'home_advantages' => 'Advantages',
             'home_services' => 'Services',
             'home_process' => 'Simple process',
+            'home_requirements' => 'Request steps',
             'home_cta_title' => 'Want to understand the steps before applying?',
             'home_cta_text' => 'Send us a message and we will reply with information about eligibility, costs, and repayment.',
             'home_cta_button' => 'Contact us',
@@ -258,10 +266,13 @@ function ui_text(array $site, string $key): string
             'footer_contact' => 'Kapcsolat',
             'footer_links' => 'Hasznos linkek',
             'footer_terms' => 'Általános szerződési feltételek',
-            'footer_privacy' => 'Privacy Policy / Adatvédelmi tájékoztató',
+            'footer_privacy' => 'Adatvédelmi tájékoztató',
             'footer_accessibility' => 'Akadálymentesítés',
             'footer_data_rights' => 'Érintetti jogokról szóló tájékoztató',
             'footer_retention' => 'Adatmegőrzési szabályzat',
+            'footer_regulatory_logos' => 'ANPC, SAL és SOL',
+            'footer_sal_label' => 'Alternatív vitarendezés',
+            'footer_sol_label' => 'Online vitarendezés',
             'a11y_button' => 'Akadálymentesítési beállítások',
             'a11y_title' => 'Akadálymentesítési beállítások',
             'a11y_text_size' => 'Szövegméret',
@@ -291,7 +302,7 @@ function ui_text(array $site, string $key): string
             'documents_title' => 'Dokumentumok és tájékoztatók',
             'cookie_title' => 'Cookie beállítások',
             'cookie_text' => 'Az oldal működéséhez szükséges sütiket használunk. Az opcionális sütiket csak a hozzájárulásod után használjuk.',
-            'cookie_privacy' => 'Privacy Policy / adatvédelmi tájékoztató megnyitása',
+            'cookie_privacy' => 'Adatvédelmi tájékoztató megnyitása',
             'cookie_necessary' => 'Csak szükséges',
             'cookie_accept_all' => 'Mindet elfogadom',
             'menu_toggle' => 'Menü',
@@ -305,6 +316,7 @@ function ui_text(array $site, string $key): string
             'home_advantages' => 'Előnyök',
             'home_services' => 'Szolgáltatások',
             'home_process' => 'Egyszerű folyamat',
+            'home_requirements' => 'Igénylési lépések',
             'home_cta_title' => 'Szeretnéd megérteni a lépéseket igénylés előtt?',
             'home_cta_text' => 'Írj nekünk, és visszajelzünk a jogosultságról, költségekről és törlesztési lehetőségekről.',
             'home_cta_button' => 'Kapcsolatfelvétel',
@@ -352,6 +364,36 @@ function language_label(string $language): string
 function schema_reference(string $fragment): array
 {
     return ['@id' => absolute_url('/#' . ltrim($fragment, '#'))];
+}
+
+function schema_knows_about(string $language): array
+{
+    $items = [
+        'ro' => [
+            'credit pentru nevoi personale',
+            'DAE',
+            'costul total al creditului',
+            'creditare responsabilă',
+            'rambursare credit',
+        ],
+        'en' => [
+            'personal needs credit',
+            'APR',
+            'total cost of credit',
+            'responsible lending',
+            'credit repayment',
+        ],
+        'hu' => [
+            'személyi hitel',
+            'DAE/THM',
+            'a hitel teljes költsége',
+            'felelős hitelezés',
+            'hitel törlesztése',
+        ],
+    ];
+
+    $language = normalize_language($language);
+    return $items[$language] ?? $items[DEFAULT_LANGUAGE];
 }
 
 function normalized_faq_items(array $items): array
@@ -477,13 +519,7 @@ function build_structured_data(array $site, array $options): array
     if ($identifiers) {
         $organization['identifier'] = $identifiers;
     }
-    $organization['knowsAbout'] = [
-        'credit pentru nevoi personale',
-        'DAE',
-        'costul total al creditului',
-        'creditare responsabila',
-        'rambursare credit',
-    ];
+    $organization['knowsAbout'] = schema_knows_about($language);
 
     if ($servicePosts) {
         $organization['hasOfferCatalog'] = [
@@ -998,15 +1034,15 @@ function render_footer(array $site): string
         <p><a rel="privacy-policy" href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">' . e(ui_text($site, 'footer_privacy')) . '</a></p>
         <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">' . e(ui_text($site, 'footer_data_rights')) . '</a></p>
         <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">' . e(ui_text($site, 'footer_retention')) . '</a></p>
-        <div class="footer-regulatory-logos" aria-label="ANPC, SAL si SOL">
+        <div class="footer-regulatory-logos" aria-label="' . e(ui_text($site, 'footer_regulatory_logos')) . '">
           <a href="' . e($settings['anpcUrl']) . '" target="_blank" rel="nofollow noopener" aria-label="ANPC">
             <img src="/assets/anpc.webp" alt="ANPC" loading="lazy" decoding="async">
           </a>
-          <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="nofollow noopener" aria-label="Solutionarea alternativa a litigiilor">
-            <img src="/assets/anpc-sal.svg" alt="Solutionarea alternativa a litigiilor" loading="lazy" decoding="async">
+          <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="nofollow noopener" aria-label="' . e(ui_text($site, 'footer_sal_label')) . '">
+            <img src="/assets/anpc-sal.svg" alt="' . e(ui_text($site, 'footer_sal_label')) . '" loading="lazy" decoding="async">
           </a>
-          <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener" aria-label="Solutionarea online a litigiilor">
-            <img src="/assets/anpc-sol.svg" alt="Solutionarea online a litigiilor" loading="lazy" decoding="async">
+          <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener" aria-label="' . e(ui_text($site, 'footer_sol_label')) . '">
+            <img src="/assets/anpc-sol.svg" alt="' . e(ui_text($site, 'footer_sol_label')) . '" loading="lazy" decoding="async">
           </a>
         </div>
       </section>
@@ -1261,7 +1297,7 @@ function render_home(array $site): string
   <section class="content-band muted">
     <div class="section-heading">
       <p class="eyebrow">' . e(ui_text($site, 'home_process')) . '</p>
-      <h2>' . e($page['requirementsTitle'] ?? 'De ce ai nevoie') . '</h2>
+      <h2>' . e($page['requirementsTitle'] ?? ui_text($site, 'home_requirements')) . '</h2>
     </div>
     <div class="card-grid">' . render_text_cards($page['requirements'] ?? []) . '</div>
   </section>

@@ -14,6 +14,7 @@ $files = [
     ROOT_DIR . '/database/imported-wordpress.sql',
     ROOT_DIR . '/database/content-overrides.sql',
     ROOT_DIR . '/database/ifn-trust-content.sql',
+    ROOT_DIR . '/database/multilingual-content-fixes.sql',
 ];
 
 foreach ($files as $file) {
