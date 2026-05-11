@@ -747,7 +747,6 @@ function render_accessibility_tools(array $site): string
           <path d="M8.4 21l3.6-7.9L15.6 21"></path>
         </svg>
       </span>
-      <span class="accessibility-toggle-label">' . e(ui_text($site, 'a11y_button')) . '</span>
     </button>
     <aside class="accessibility-panel" id="' . e($panelId) . '" aria-labelledby="accessibility-title" hidden>
       <div class="accessibility-panel-header">

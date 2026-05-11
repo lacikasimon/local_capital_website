@@ -906,12 +906,12 @@ textarea:focus {
 .accessibility-tools {
   position: fixed;
   right: clamp(14px, 3vw, 28px);
-  bottom: clamp(14px, 3vw, 28px);
+  bottom: clamp(96px, 13vh, 150px);
   z-index: 95;
   display: grid;
   justify-items: end;
   gap: 10px;
-  max-width: min(92vw, 420px);
+  max-width: min(92vw, 410px);
   pointer-events: none;
 }
 
@@ -924,8 +924,9 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 11px;
+  width: 64px;
   min-width: 64px;
+  height: 64px;
   min-height: 64px;
   border: 2px solid #ffffff;
   border-radius: 999px;
@@ -935,7 +936,7 @@ textarea:focus {
   cursor: pointer;
   font: inherit;
   font-weight: 850;
-  padding: 9px 18px 9px 10px;
+  padding: 8px;
   pointer-events: auto;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
@@ -970,9 +971,7 @@ textarea:focus {
 }
 
 .accessibility-toggle-label {
-  max-width: 190px;
-  line-height: 1.18;
-  text-align: left;
+  display: none;
 }
 
 .accessibility-panel {
@@ -1530,7 +1529,7 @@ legend {
 
   .accessibility-tools {
     right: 12px;
-    bottom: 12px;
+    bottom: 96px;
   }
 }
 
@@ -1592,9 +1591,5 @@ legend {
     width: 64px;
     height: 64px;
     padding: 9px;
-  }
-
-  .accessibility-toggle-label {
-    display: none;
   }
 }
