@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 function admin_layout(array $site, array $admin, string $body, string $title = 'Admin'): string
 {
+    if (!headers_sent()) {
+        header('Cache-Control: no-store, private');
+    }
+
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $cssVersion = asset_version('/styles.css');
     $languageLinks = '';
@@ -239,6 +243,7 @@ function handle_login_post(): void
 function render_admin_dashboard(array $site, array $admin): string
 {
     $messageCount = unread_contact_message_count();
+    $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
     $pages = '';
     foreach ($site['pages'] as $key => $page) {
         $pages .= '<li><a href="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '">' . e($page['title']) . '</a></li>';
@@ -256,6 +261,7 @@ function render_admin_dashboard(array $site, array $admin): string
       <a class="button" href="/admin/settings?lang=' . e($site['language']) . '">Setări site</a>
       <a class="button button-secondary" href="/admin/links?lang=' . e($site['language']) . '">Link inventory</a>
       <a class="button button-secondary" href="/admin/messages?lang=' . e($site['language']) . '">Mesaje' . ($messageCount ? ' (' . $messageCount . ')' : '') . '</a>
+      <a class="button button-secondary" href="/admin/anaf-consents?lang=' . e($site['language']) . '">Acorduri ANAF' . ($anafCount ? ' (' . $anafCount . ')' : '') . '</a>
     </article>
     <article class="admin-card">
       <h2>Pagini</h2>

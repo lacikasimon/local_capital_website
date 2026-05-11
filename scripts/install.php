@@ -15,6 +15,7 @@ $files = [
     ROOT_DIR . '/database/content-overrides.sql',
     ROOT_DIR . '/database/ifn-trust-content.sql',
     ROOT_DIR . '/database/multilingual-content-fixes.sql',
+    ROOT_DIR . '/database/anaf-consent.sql',
 ];
 
 foreach ($files as $file) {

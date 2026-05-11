@@ -30,6 +30,7 @@ return [
         'actions' => [
             'page_view' => 0.0,
             'contact' => (float) (getenv('RECAPTCHA_CONTACT_SCORE') ?: 0.5),
+            'anaf_consent' => (float) (getenv('RECAPTCHA_ANAF_CONSENT_SCORE') ?: 0.6),
             'admin_login' => (float) (getenv('RECAPTCHA_ADMIN_SCORE') ?: 0.7),
         ],
     ],

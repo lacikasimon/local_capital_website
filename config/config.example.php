@@ -28,6 +28,7 @@ return [
         'actions' => [
             'page_view' => 0.0,
             'contact' => 0.5,
+            'anaf_consent' => 0.6,
             'admin_login' => 0.7,
         ],
     ],

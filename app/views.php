@@ -22,10 +22,12 @@ function public_layout(array $site, string $body, array $options = []): string
     }
     $aiSummary = seo_description((string) ($options['aiSummary'] ?? $description));
     $alternateLinks = '';
-    foreach (SUPPORTED_LANGUAGES as $code) {
-        $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="' . e($code) . '" href="' . e(absolute_url(localized_path($canonicalPath, $code))) . '">';
+    if (($options['alternateLanguages'] ?? true) !== false) {
+        foreach (SUPPORTED_LANGUAGES as $code) {
+            $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="' . e($code) . '" href="' . e(absolute_url(localized_path($canonicalPath, $code))) . '">';
+        }
+        $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="x-default" href="' . e(absolute_url(localized_path($canonicalPath, DEFAULT_LANGUAGE))) . '">';
     }
-    $alternateLinks .= "\n    " . '<link rel="alternate" hreflang="x-default" href="' . e(absolute_url(localized_path($canonicalPath, DEFAULT_LANGUAGE))) . '">';
     $structuredData = json_encode(build_structured_data($site, $options + [
         'metaTitle' => $title,
         'schemaTitle' => (string) ($options['title'] ?? $settings['brandName']),
@@ -66,7 +68,7 @@ function public_layout(array $site, string $body, array $options = []): string
   </head>
   <body>
     <a class="skip-link" href="#main-content">' . e(ui_text($site, 'skip_to_content')) . '</a>
-    ' . render_header($site, $options['active'] ?? '', $canonicalPath) . '
+    ' . render_header($site, $options['active'] ?? '', $canonicalPath, ($options['showLanguageNav'] ?? true) !== false) . '
     <main id="main-content" tabindex="-1">' . $body . '</main>
     ' . render_footer($site) . '
     ' . render_accessibility_tools($site) . '
@@ -619,7 +621,7 @@ function build_structured_data(array $site, array $options): array
     ];
 }
 
-function render_header(array $site, string $active, string $currentPath = '/'): string
+function render_header(array $site, string $active, string $currentPath = '/', bool $showLanguageNav = true): string
 {
     $settings = $site['settings'];
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
@@ -636,10 +638,13 @@ function render_header(array $site, string $active, string $currentPath = '/'): 
     }
 
     $languageLinks = '';
-    foreach (SUPPORTED_LANGUAGES as $code) {
-        $class = $language === $code ? ' class="active"' : '';
-        $languageLinks .= '<a' . $class . ' href="' . e(localized_path($currentPath, $code)) . '">' . strtoupper(e($code)) . '</a>';
+    if ($showLanguageNav) {
+        foreach (SUPPORTED_LANGUAGES as $code) {
+            $class = $language === $code ? ' class="active"' : '';
+            $languageLinks .= '<a' . $class . ' href="' . e(localized_path($currentPath, $code)) . '">' . strtoupper(e($code)) . '</a>';
+        }
     }
+    $languageNav = $showLanguageNav ? '<nav class="language-nav" aria-label="' . e(ui_text($site, 'aria_language_nav')) . '">' . $languageLinks . '</nav>' : '';
 
     return '<header class="site-header">
     <a class="brand" href="' . e(localized_path('/', $language)) . '" aria-label="' . e($settings['brandName']) . '">
@@ -657,7 +662,7 @@ function render_header(array $site, string $active, string $currentPath = '/'): 
       <span class="sr-only">' . e(ui_text($site, 'menu_toggle')) . '</span>
     </label>
     <nav class="main-nav" id="' . e($navId) . '" aria-label="' . e(ui_text($site, 'aria_main_nav')) . '">' . $links . '</nav>
-    <nav class="language-nav" aria-label="' . e(ui_text($site, 'aria_language_nav')) . '">' . $languageLinks . '</nav>
+    ' . $languageNav . '
     <a class="header-contact" href="tel:' . e(preg_replace('/\s+/', '', $settings['phone'])) . '">
       <svg class="phone-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.33 1.8.63 2.65a2 2 0 0 1-.45 2.11L8.09 9.69a16 16 0 0 0 6.22 6.22l1.21-1.21a2 2 0 0 1 2.11-.45c.85.3 1.74.51 2.65.63A2 2 0 0 1 22 16.92Z"></path>
@@ -1600,6 +1605,8 @@ function render_robots_txt(): string
     $privateRules = "Allow: /\n"
         . "Allow: /llms.txt\n"
         . "Disallow: /admin/\n"
+        . "Disallow: /acord-anaf/\n"
+        . "Disallow: /acord-anaf\n"
         . "Disallow: /config/\n"
         . "Disallow: /database/\n"
         . "Disallow: /scripts/\n";

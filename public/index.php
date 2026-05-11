@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/../app/bootstrap.php';
 require __DIR__ . '/../app/views.php';
 require __DIR__ . '/../app/admin.php';
+require __DIR__ . '/../app/anaf.php';
 
 [$language, $path] = detect_language_and_path();
 $method = method();
@@ -51,6 +52,11 @@ try {
                 redirect('/admin/posts/' . $slug . '?lang=' . $adminLang . '&ok=1');
             }
 
+            if ($path === '/admin/anaf-consents/new') {
+                $id = create_anaf_consent_draft($site, $admin);
+                redirect('/admin/anaf-consents/' . $id . '?lang=' . $adminLang . '&created=1');
+            }
+
             if (preg_match('#^/admin/messages/([0-9]+)$#', $path, $match)) {
                 update_contact_message_status((int) $match[1]);
                 redirect('/admin/messages?lang=' . $adminLang . '&ok=1');
@@ -77,6 +83,29 @@ try {
             exit;
         }
 
+        if ($path === '/admin/anaf-consents') {
+            echo render_anaf_consents_admin($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/anaf-consents/new') {
+            echo render_anaf_consent_create_form($site, $admin);
+            exit;
+        }
+
+        if (preg_match('#^/admin/anaf-consents/([0-9]+)/pdf$#', $path, $match)) {
+            output_anaf_consent_pdf((int) $match[1]);
+            exit;
+        }
+
+        if (preg_match('#^/admin/anaf-consents/([0-9]+)$#', $path, $match)) {
+            $html = render_anaf_consent_detail($site, $admin, (int) $match[1]);
+            if ($html) {
+                echo $html;
+                exit;
+            }
+        }
+
         if (preg_match('#^/admin/pages/([a-z0-9-]+)$#', $path, $match)) {
             $html = render_page_editor($site, $admin, $match[1]);
             if ($html) {
@@ -99,6 +128,45 @@ try {
     }
 
     $site = load_site($language);
+
+    $anafToken = anaf_public_route_token($path);
+    if ($anafToken !== null) {
+        if ($language !== DEFAULT_LANGUAGE) {
+            redirect(ANAF_PUBLIC_PATH . ($anafToken !== '' ? '/' . $anafToken : ''));
+        }
+
+        $record = $anafToken !== '' ? anaf_fetch_consent_by_token($anafToken) : null;
+        if ($anafToken !== '' && !$record) {
+            http_response_code(404);
+            echo render_error_page('Link indisponibil', 'Linkul de acord ANAF nu este valid sau a fost deja folosit.', DEFAULT_LANGUAGE);
+            exit;
+        }
+        if ($record && anaf_status($record) !== 'draft') {
+            http_response_code(410);
+            echo render_error_page('Link expirat', 'Linkul de acord ANAF nu mai este activ.', DEFAULT_LANGUAGE);
+            exit;
+        }
+
+        if ($method === 'POST') {
+            $result = save_anaf_consent_submission($record, $_POST);
+            if ($result['ok']) {
+                redirect(ANAF_PUBLIC_PATH . '?sent=1');
+            }
+
+            http_response_code(422);
+            echo render_anaf_consent_form($site, $record, $result['errors'], $result['old']);
+            exit;
+        }
+
+        if ($method !== 'GET') {
+            http_response_code(405);
+            echo render_error_page(error_page_text($language, 'method_title'), error_page_text($language, 'method_message'), $language);
+            exit;
+        }
+
+        echo render_anaf_consent_form($site, $record, [], ['public_token' => $anafToken], ($_GET['sent'] ?? '') === '1');
+        exit;
+    }
 
     if ((route_page_key_for_path($language, $path) === 'contact') && $method === 'POST') {
         $result = save_contact_message($language, $_POST);

@@ -128,6 +128,52 @@ CREATE TABLE IF NOT EXISTS admin_login_bans (
   KEY idx_admin_login_banned_until (banned_until)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS anaf_consents (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  public_token_hash CHAR(64) NULL,
+  public_token_enc TEXT NULL,
+  token_expires_at DATETIME NULL,
+  request_reference_enc TEXT NOT NULL,
+  first_name_enc TEXT NOT NULL,
+  last_name_enc TEXT NOT NULL,
+  cnp_enc TEXT NOT NULL,
+  id_series_enc TEXT NOT NULL,
+  id_number_enc TEXT NOT NULL,
+  id_issued_by_enc TEXT NOT NULL,
+  id_issued_at_enc TEXT NOT NULL,
+  email_enc TEXT NOT NULL,
+  phone_enc TEXT NOT NULL,
+  address_enc TEXT NOT NULL,
+  consent_anaf TINYINT(1) NOT NULL DEFAULT 0,
+  consent_text_version VARCHAR(60) NOT NULL DEFAULT '',
+  consent_text TEXT NULL,
+  ip_address_enc TEXT NULL,
+  ip_hash CHAR(64) NULL,
+  user_agent_hash CHAR(64) NULL,
+  created_by_admin_id INT UNSIGNED NULL,
+  submitted_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_anaf_public_token_hash (public_token_hash),
+  KEY idx_anaf_status_created (status, created_at),
+  KEY idx_anaf_submitted_at (submitted_at),
+  KEY idx_anaf_token_expires (token_expires_at),
+  CONSTRAINT fk_anaf_created_by_admin FOREIGN KEY (created_by_admin_id) REFERENCES admin_users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS anaf_consent_attempts (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip_hash CHAR(64) NOT NULL,
+  public_token_hash CHAR(64) NULL,
+  success TINYINT(1) NOT NULL DEFAULT 0,
+  attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_anaf_attempt_ip_time (ip_hash, attempted_at),
+  KEY idx_anaf_attempt_token_time (public_token_hash, attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO settings (language_code, setting_key, setting_value) VALUES
 ('ro', 'brandName', 'Local Capital'),
 ('ro', 'legalName', 'LOCAL CAPITAL IFN S.A.'),

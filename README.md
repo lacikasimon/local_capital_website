@@ -19,6 +19,7 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 - `database/content-overrides.sql` cleans imported pages, services, and case studies into structured, non-repeating sections based on the original WordPress content.
 - `database/ifn-trust-content.sql` applies the IFN trust, responsible-lending, legal-identification, and multilingual guide content layer.
 - `database/multilingual-content-fixes.sql` normalizes localized routes and replaces remaining imported Romanian legal bodies in English/Hungarian content.
+- `database/anaf-consent.sql` creates the encrypted ANAF consent tables used by the Romanian consent form and admin PDF workflow.
 - `scripts/import-wordpress-content.js` regenerates the WordPress import SQL from the current public site.
 - `public/downloads/` stores downloaded PDF documents linked from the old site.
 - `scripts/create-admin.php` creates or updates admin users.
@@ -28,7 +29,7 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 ## Install
 
 1. Create a MySQL database and user.
-2. Import `database/schema.sql`, then `database/imported-wordpress.sql`, then `database/content-overrides.sql`, then `database/ifn-trust-content.sql`, then `database/multilingual-content-fixes.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
+2. Import `database/schema.sql`, then `database/imported-wordpress.sql`, then `database/content-overrides.sql`, then `database/ifn-trust-content.sql`, then `database/multilingual-content-fixes.sql`, then `database/anaf-consent.sql` in phpMyAdmin or MySQL CLI. You can also run `php scripts/install.php` after configuring the database.
 3. Copy the config file:
 
 ```sh
@@ -138,10 +139,13 @@ Contact messages can be reviewed from `/admin/messages?lang=ro`, `/admin/message
     'actions' => [
         'page_view' => 0.0,
         'contact' => 0.5,
+        'anaf_consent' => 0.6,
         'admin_login' => 0.7,
     ],
 ],
 ```
+
+- The Romanian ANAF agreement form at `/acord-anaf` uses the same signed token, honeypot, rate limiting, optional reCAPTCHA v3, encrypted storage, one-time public links, and admin-only PDF generation. A local smoke/security check is available with `php scripts/security-check-anaf.php`.
 
 - Admin login ban thresholds can be tuned in `config/config.php`:
 

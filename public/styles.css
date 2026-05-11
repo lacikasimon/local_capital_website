@@ -1198,6 +1198,104 @@ html[data-a11y-contrast="true"] .accessibility-panel {
   font-weight: 600;
 }
 
+.consent-hero {
+  min-height: auto;
+}
+
+.consent-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(260px, 0.8fr);
+  gap: clamp(18px, 4vw, 34px);
+  width: min(1120px, calc(100% - 36px));
+  margin: 0 auto clamp(42px, 7vw, 76px);
+}
+
+.consent-form,
+.security-note {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid label:has(textarea),
+.form-grid label:has([name="address"]) {
+  grid-column: 1 / -1;
+}
+
+.consent-box {
+  border: 1px solid #cddfcd;
+  border-radius: 8px;
+  background: #f4faf3;
+  padding: 16px;
+}
+
+.consent-box p,
+.security-note p,
+.privacy {
+  color: var(--muted);
+}
+
+.admin-title-row,
+.admin-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.detail-grid div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 12px;
+}
+
+.detail-grid dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.detail-grid dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-subsection {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.readonly-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.consent-text-preview {
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
 .admin-header form {
   display: inline;
 }
@@ -1309,6 +1407,21 @@ html[data-a11y-contrast="true"] .accessibility-panel {
 .status-archived {
   background: #f4ead8;
   color: #6b4d13;
+}
+
+.status-draft {
+  background: #e4f1f6;
+  color: #1d5267;
+}
+
+.status-submitted {
+  background: #e2f1e3;
+  color: #24522c;
+}
+
+.status-expired {
+  background: #f6e7e3;
+  color: #7b3327;
 }
 
 .admin-form {
@@ -1488,6 +1601,18 @@ legend {
   .footer-grid,
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .consent-layout,
+  .form-grid.two-columns,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-title-row,
+  .admin-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .legal-list div,
