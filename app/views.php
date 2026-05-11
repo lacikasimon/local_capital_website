@@ -1011,7 +1011,7 @@ function render_responsible_notice(array $site, ?string $text = null): string
   </aside>';
 }
 
-function render_loan_example(array $site, mixed $example): string
+function render_loan_example(array $site, $example): string
 {
     if (!is_array($example)) {
         return '';

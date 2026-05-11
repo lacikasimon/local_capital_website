@@ -6,6 +6,34 @@ const ROOT_DIR = __DIR__ . '/..';
 const DEFAULT_LANGUAGE = 'ro';
 const SUPPORTED_LANGUAGES = ['ro', 'en', 'hu'];
 
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool
+    {
+        return $needle === '' || strpos($haystack, $needle) === 0;
+    }
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains(string $haystack, string $needle): bool
+    {
+        return $needle === '' || strpos($haystack, $needle) !== false;
+    }
+}
+
+if (!function_exists('array_is_list')) {
+    function array_is_list(array $array): bool
+    {
+        $expectedKey = 0;
+        foreach ($array as $key => $_) {
+            if ($key !== $expectedKey++) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
 function csp_nonce(): string
 {
     static $nonce = null;
@@ -189,7 +217,7 @@ function enforce_request_hardening(): void
     }
 }
 
-function e(mixed $value): string
+function e($value): string
 {
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
@@ -215,7 +243,7 @@ function repair_text_encoding(string $value): string
     return strtr($value, $replacements);
 }
 
-function repair_data_encoding(mixed $value): mixed
+function repair_data_encoding($value)
 {
     if (is_string($value)) {
         return repair_text_encoding($value);
@@ -1297,7 +1325,7 @@ function label_from_key(string $key): string
     return ucwords($label);
 }
 
-function render_editable_fields(mixed $value, array $path): string
+function render_editable_fields($value, array $path): string
 {
     if (is_array($value) && array_is_list($value)) {
         $html = '';
@@ -1332,7 +1360,7 @@ function render_editable_fields(mixed $value, array $path): string
     return '';
 }
 
-function render_field(string $key, mixed $value, array $path): string
+function render_field(string $key, $value, array $path): string
 {
     $name = field_name($path);
     $label = e(label_from_key($key));
@@ -1351,7 +1379,7 @@ function render_field(string $key, mixed $value, array $path): string
     return '<label>' . $label . '<input name="' . e($name) . '" value="' . e($text) . '"></label>';
 }
 
-function apply_editable_fields(mixed $current, array $path): mixed
+function apply_editable_fields($current, array $path)
 {
     if (is_array($current) && array_is_list($current)) {
         return array_map(fn ($item, $index) => apply_editable_fields($item, [...$path, (string) $index]), $current, array_keys($current));
