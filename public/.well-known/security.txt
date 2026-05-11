@@ -1,0 +1,5 @@
+Contact: mailto:protectiadatelor@localcapital.ro
+Contact: mailto:info@localcapital.ro
+Policy: https://new.localcapital.ro/politica-privind-datele-personale
+Preferred-Languages: ro, en, hu
+Canonical: https://new.localcapital.ro/.well-known/security.txt

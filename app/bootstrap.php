@@ -35,6 +35,25 @@ function app_config(): array
     return $config;
 }
 
+function is_https_request(): bool
+{
+    $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+    $forwardedProto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    $forwardedSsl = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_SSL'] ?? ''));
+    $frontEndHttps = strtolower((string) ($_SERVER['HTTP_FRONT_END_HTTPS'] ?? ''));
+    $requestScheme = strtolower((string) ($_SERVER['REQUEST_SCHEME'] ?? ''));
+    $cfVisitor = strtolower((string) ($_SERVER['HTTP_CF_VISITOR'] ?? ''));
+    $serverPort = (string) ($_SERVER['SERVER_PORT'] ?? '');
+
+    return ($https !== '' && $https !== 'off')
+        || $forwardedProto === 'https'
+        || $forwardedSsl === 'on'
+        || $frontEndHttps === 'on'
+        || $requestScheme === 'https'
+        || $serverPort === '443'
+        || strpos($cfVisitor, '"scheme":"https"') !== false;
+}
+
 function db(): PDO
 {
     static $pdo = null;
@@ -68,8 +87,7 @@ function start_secure_session(): void
     }
 
     $config = app_config()['app'];
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $secure = is_https_request();
 
     session_name($config['session_name'] ?? 'LC_ADMIN');
     session_set_cookie_params([
@@ -91,8 +109,7 @@ function send_security_headers(): void
     }
 
     $nonce = csp_nonce();
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $secure = is_https_request();
     $csp = [
         "default-src 'self'",
         "script-src 'nonce-" . $nonce . "'",
@@ -100,6 +117,8 @@ function send_security_headers(): void
         "img-src 'self' data:",
         "font-src 'self'",
         "connect-src 'self'",
+        "frame-src 'none'",
+        "manifest-src 'self'",
         "object-src 'none'",
         "form-action 'self'",
         "base-uri 'none'",
@@ -121,6 +140,52 @@ function send_security_headers(): void
 
     if ($secure) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
+}
+
+function request_looks_malicious(string $value): bool
+{
+    $decoded = strtolower(rawurldecode($value));
+    $patterns = [
+        '/<\s*script\b/',
+        '/javascript\s*:/',
+        '/onerror\s*=/',
+        '/\.\.\//',
+        '/\.\.\\\\/',
+        '#/etc/passwd#',
+        '#php://#',
+        '/\bunion\s+select\b/',
+        '/\binformation_schema\b/',
+        '/\bbenchmark\s*\(/',
+        '/\bsleep\s*\(/',
+        '/\bwaitfor\s+delay\b/',
+        '/\bxp_cmdshell\b/',
+        '/\$\{\s*jndi\s*:/',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $decoded)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function enforce_request_hardening(): void
+{
+    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    if (!in_array($method, ['GET', 'HEAD', 'POST'], true)) {
+        header('Allow: GET, POST, HEAD');
+        http_response_code(405);
+        exit;
+    }
+
+    $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
+    if (request_looks_malicious($path . "\n" . $query)) {
+        http_response_code(403);
+        exit;
     }
 }
 
@@ -485,6 +550,7 @@ function localized_page_routes(): array
             'contract' => '/contract',
             'guide' => '/ghid-client',
             'contact' => '/contact',
+            'accessibility' => '/accesibilitate',
             'gdpr' => '/gdpr',
             'privacy' => '/politica-privind-datele-personale',
             'terms' => '/termene-si-conditii',
@@ -495,6 +561,7 @@ function localized_page_routes(): array
             'contract' => '/loan-types',
             'guide' => '/client-guide',
             'contact' => '/contact',
+            'accessibility' => '/accessibility',
             'gdpr' => '/gdpr',
             'privacy' => '/personal-data-policy',
             'terms' => '/terms-and-conditions',
@@ -505,6 +572,7 @@ function localized_page_routes(): array
             'contract' => '/hitelek',
             'guide' => '/ugyfel-tajekoztato',
             'contact' => '/kapcsolat',
+            'accessibility' => '/akadalymentesites',
             'gdpr' => '/gdpr',
             'privacy' => '/szemelyes-adatok-kezelese',
             'terms' => '/altalanos-szerzodesi-feltetelek',
@@ -654,6 +722,231 @@ function route_page_path(string $key, string $language): ?string
     $language = normalize_language($language);
     $routes = localized_page_routes();
     return $routes[$language][$key] ?? $routes[DEFAULT_LANGUAGE][$key] ?? null;
+}
+
+function legal_page_fallbacks(string $language): array
+{
+    $language = normalize_language($language);
+
+    $content = [
+        'ro' => [
+            'gdpr' => [
+                'title' => 'GDPR',
+                'summary' => 'Informații despre prelucrarea datelor personale de către LOCAL CAPITAL IFN S.A.',
+                'body' => '## Protecția datelor personale
+
+LOCAL CAPITAL IFN S.A. prelucrează date personale în conformitate cu Regulamentul (UE) 2016/679 (GDPR), legislația română aplicabilă și documentele interne privind securitatea datelor.
+
+## Operatorul datelor
+
+Operatorul este LOCAL CAPITAL IFN S.A. Pentru întrebări privind protecția datelor, poți scrie la info@localcapital.ro sau protectiadatelor@localcapital.ro.
+
+## Drepturile persoanei vizate
+
+Ai dreptul de acces, rectificare, ștergere, restricționare, opoziție, portabilitate și dreptul de a depune o plângere la autoritatea competentă.
+
+## Securitate
+
+Folosim măsuri tehnice și organizatorice pentru limitarea accesului neautorizat, protejarea formularului de contact și reducerea riscurilor de securitate.',
+            ],
+            'privacy' => [
+                'title' => 'Privacy Policy / Politica de confidențialitate',
+                'summary' => 'Informații despre datele personale, cookie-uri, formulare și canalele de contact Local Capital.',
+                'body' => '## Privacy Policy / Politica de confidențialitate
+
+Această pagină explică modul în care LOCAL CAPITAL IFN S.A. gestionează datele personale transmise prin website, inclusiv datele introduse în formularul de contact.
+
+## Date colectate
+
+Putem prelucra nume, telefon, email, subiectul solicitării, mesajul transmis, consimțământul privind informarea și date tehnice necesare funcționării website-ului.
+
+## Scopuri
+
+Datele sunt folosite pentru a răspunde solicitărilor, pentru comunicare, pentru protecția website-ului și pentru îndeplinirea obligațiilor legale.
+
+## Cookie-uri
+
+Website-ul folosește cookie-uri necesare pentru funcționare și preferințe. Cookie-urile opționale sunt folosite doar după consimțământ, dacă vor fi activate.
+
+## Contact
+
+Pentru întrebări privind datele personale, contactează info@localcapital.ro sau protectiadatelor@localcapital.ro.',
+            ],
+            'terms' => [
+                'title' => 'Termene și condiții',
+                'summary' => 'Reguli generale privind folosirea website-ului Local Capital.',
+                'body' => '## Termene și condiții
+
+Informațiile publicate pe website sunt informative și nu reprezintă aprobare garantată, ofertă personalizată sau consultanță financiară.
+
+## Folosirea website-ului
+
+Utilizatorii trebuie să folosească website-ul în mod legal și să nu transmită conținut abuziv, automatizat sau care poate afecta securitatea serviciului.
+
+## Informații despre credit
+
+Orice decizie de creditare se bazează pe analiza solicitării, eligibilitate și documentele comunicate înainte de semnarea contractului.',
+            ],
+            'accessibility' => [
+                'title' => 'Declarație de accesibilitate',
+                'summary' => 'Informații despre măsurile de accesibilitate ale website-ului Local Capital.',
+                'body' => '## Angajamentul nostru
+
+LOCAL CAPITAL IFN S.A. urmărește ca website-ul Local Capital să poată fi folosit de cât mai multe persoane, inclusiv de persoane care folosesc tastatura, cititoare de ecran, mărire de text sau setări de contrast ridicat.
+
+## Funcții disponibile
+
+- navigare cu tastatura și link „sari la conținut”;
+- indicator vizibil de focus pentru elementele interactive;
+- opțiuni pentru text mai mare, contrast ridicat, linkuri subliniate și reducerea animațiilor.
+
+## Feedback
+
+Dacă întâmpini o barieră de accesibilitate, scrie la info@localcapital.ro sau protectiadatelor@localcapital.ro.',
+            ],
+        ],
+        'en' => [
+            'gdpr' => [
+                'title' => 'GDPR',
+                'summary' => 'Information about personal data processing by LOCAL CAPITAL IFN S.A.',
+                'body' => '## Personal data protection
+
+LOCAL CAPITAL IFN S.A. processes personal data in accordance with Regulation (EU) 2016/679 (GDPR), applicable Romanian law, and internal data security rules.
+
+## Data controller
+
+The controller is LOCAL CAPITAL IFN S.A. For data protection questions, contact info@localcapital.ro or protectiadatelor@localcapital.ro.
+
+## Data subject rights
+
+You may request access, rectification, erasure, restriction, objection, portability, and you may lodge a complaint with the competent authority.',
+            ],
+            'privacy' => [
+                'title' => 'Privacy Policy',
+                'summary' => 'Information about personal data, cookies, forms, and Local Capital contact channels.',
+                'body' => '## Privacy Policy
+
+This page explains how LOCAL CAPITAL IFN S.A. handles personal data sent through the website, including contact form data.
+
+## Data collected
+
+We may process name, phone, email, request subject, message content, consent confirmation, and technical data needed for website operation and security.
+
+## Purposes
+
+Data is used to answer requests, communicate with users, protect the website, and meet legal obligations.
+
+## Cookies
+
+The website uses necessary cookies for operation and preferences. Optional cookies are used only after consent, if such features are enabled.',
+            ],
+            'terms' => [
+                'title' => 'Terms and conditions',
+                'summary' => 'General rules for using the Local Capital website.',
+                'body' => '## Terms and conditions
+
+Information published on the website is informative and does not represent guaranteed approval, a personalized offer, or financial advice.
+
+## Website use
+
+Users must use the website lawfully and must not send abusive, automated, or security-impacting content.',
+            ],
+            'accessibility' => [
+                'title' => 'Accessibility statement',
+                'summary' => 'Information about Local Capital website accessibility measures.',
+                'body' => '## Our commitment
+
+LOCAL CAPITAL IFN S.A. aims to make the Local Capital website usable by as many people as possible, including people who use a keyboard, screen reader, text enlargement, or high-contrast settings.
+
+## Available features
+
+- keyboard navigation and a skip-to-content link;
+- visible focus indicator for interactive elements;
+- options for larger text, high contrast, underlined links, and reduced motion.
+
+## Feedback
+
+If you encounter an accessibility barrier, contact info@localcapital.ro or protectiadatelor@localcapital.ro.',
+            ],
+        ],
+        'hu' => [
+            'gdpr' => [
+                'title' => 'GDPR',
+                'summary' => 'Tájékoztatás a LOCAL CAPITAL IFN S.A. személyes adatkezeléséről.',
+                'body' => '## Személyes adatok védelme
+
+A LOCAL CAPITAL IFN S.A. a személyes adatokat az (EU) 2016/679 rendelet (GDPR), a román jogszabályok és a belső adatbiztonsági szabályok szerint kezeli.
+
+## Adatkezelő
+
+Az adatkezelő a LOCAL CAPITAL IFN S.A. Adatvédelmi kérdésekben az info@localcapital.ro vagy a protectiadatelor@localcapital.ro címen lehet kapcsolatba lépni.
+
+## Érintetti jogok
+
+Kérhető hozzáférés, helyesbítés, törlés, korlátozás, tiltakozás, adathordozhatóság, és panasz nyújtható be az illetékes hatóságnál.',
+            ],
+            'privacy' => [
+                'title' => 'Privacy Policy / Adatvédelmi tájékoztató',
+                'summary' => 'Információk a személyes adatokról, sütikről, űrlapokról és a Local Capital kapcsolati csatornáiról.',
+                'body' => '## Privacy Policy / Adatvédelmi tájékoztató
+
+Ez az oldal bemutatja, hogyan kezeli a LOCAL CAPITAL IFN S.A. a weboldalon keresztül küldött személyes adatokat, beleértve a kapcsolatfelvételi űrlap adatait.
+
+## Kezelt adatok
+
+Kezelhető a név, telefon, email, a kérés tárgya, az üzenet tartalma, a tájékoztatás elfogadása és a weboldal működéséhez szükséges technikai adat.
+
+## Célok
+
+Az adatokat megkeresések megválaszolására, kapcsolattartásra, a weboldal védelmére és jogi kötelezettségek teljesítésére használjuk.
+
+## Sütik
+
+A weboldal szükséges sütiket használ a működéshez és preferenciákhoz. Opcionális sütik csak hozzájárulás után használhatók.',
+            ],
+            'terms' => [
+                'title' => 'Általános szerződési feltételek',
+                'summary' => 'A Local Capital weboldal használatának általános szabályai.',
+                'body' => '## Általános szerződési feltételek
+
+A weboldalon közzétett információk tájékoztató jellegűek, és nem jelentenek garantált jóváhagyást, személyre szabott ajánlatot vagy pénzügyi tanácsadást.
+
+## Weboldal használata
+
+A felhasználók kötelesek a weboldalt jogszerűen használni, és nem küldhetnek visszaélésszerű, automatizált vagy biztonságot veszélyeztető tartalmat.',
+            ],
+            'accessibility' => [
+                'title' => 'Akadálymentesítési nyilatkozat',
+                'summary' => 'Tájékoztatás a Local Capital weboldal akadálymentesítési megoldásairól.',
+                'body' => '## Elkötelezettségünk
+
+A LOCAL CAPITAL IFN S.A. célja, hogy a Local Capital weboldalt minél több ember használhassa, beleértve azokat is, akik billentyűzettel, képernyőolvasóval, nagyított szöveggel vagy magas kontrasztú beállításokkal böngésznek.
+
+## Elérhető funkciók
+
+- billentyűzetes navigáció és „ugrás a tartalomra” link;
+- jól látható fókuszjelzés az interaktív elemeknél;
+- nagyobb szöveg, magas kontraszt, aláhúzott linkek és csökkentett animációk.
+
+## Visszajelzés
+
+Akadálymentesítési probléma esetén írj az info@localcapital.ro vagy protectiadatelor@localcapital.ro címre.',
+            ],
+        ],
+    ];
+
+    $fallbacks = [];
+    foreach ($content[$language] ?? $content[DEFAULT_LANGUAGE] as $key => $page) {
+        $fallbacks[$key] = array_merge([
+            'path' => route_page_path($key, $language) ?? '/',
+            'ctaLabel' => null,
+            'ctaHref' => null,
+            'secondaryCtaLabel' => null,
+            'secondaryCtaHref' => null,
+        ], $page);
+    }
+
+    return $fallbacks;
 }
 
 function blog_index_path(string $language): string
@@ -880,6 +1173,7 @@ function load_site(string $language = DEFAULT_LANGUAGE): array
             'secondaryCtaHref' => $row['secondary_cta_href'],
         ], $extra);
     }
+    $pages += legal_page_fallbacks($language);
 
     $stmt = db()->prepare('SELECT source_type, slug, path, source_url, title, post_date AS date, excerpt, body, published FROM posts WHERE language_code = ? ORDER BY post_date DESC, id DESC');
     $stmt->execute([$language]);
@@ -1085,6 +1379,7 @@ function apply_editable_fields(mixed $current, array $path): mixed
 
 if (PHP_SAPI !== 'cli') {
     send_security_headers();
+    enforce_request_hardening();
     $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     if (str_starts_with('/' . trim($requestPath, '/'), '/admin')) {
         start_secure_session();

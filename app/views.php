@@ -12,6 +12,8 @@ function public_layout(array $site, string $body, array $options = []): string
     $description = seo_description((string) ($options['description'] ?? $settings['footerText']));
     $canonicalPath = $options['canonicalPath'] ?? current_request_path();
     $canonical = absolute_url(localized_path($canonicalPath, $language));
+    $privacyUrl = absolute_url(localized_path('/politica-privind-datele-personale', $language));
+    $termsUrl = absolute_url(localized_path('/termene-si-conditii', $language));
     $image = absolute_url($options['image'] ?? '/assets/hero-family.png');
     $robots = $options['robots'] ?? 'index,follow';
     $aiSummary = seo_description((string) ($options['aiSummary'] ?? $description));
@@ -40,6 +42,8 @@ function public_layout(array $site, string $body, array $options = []): string
     <meta name="ai-summary" content="' . e($aiSummary) . '">
     <meta name="robots" content="' . e($robots) . '">
     <link rel="canonical" href="' . e($canonical) . '">' . $alternateLinks . '
+    <link rel="privacy-policy" href="' . e($privacyUrl) . '">
+    <link rel="terms-of-service" href="' . e($termsUrl) . '">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="' . e(locale_for_language($language)) . '">
     <meta property="og:site_name" content="' . e($settings['brandName']) . '">
@@ -57,11 +61,14 @@ function public_layout(array $site, string $body, array $options = []): string
     <script type="application/ld+json" nonce="' . e(csp_nonce()) . '">' . str_replace('</', '<\/', $structuredData ?: '{}') . '</script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">' . e(ui_text($site, 'skip_to_content')) . '</a>
     ' . render_header($site, $options['active'] ?? '', $canonicalPath) . '
-    <main>' . $body . '</main>
+    <main id="main-content" tabindex="-1">' . $body . '</main>
     ' . render_footer($site) . '
+    ' . render_accessibility_tools($site) . '
     ' . render_cookie_consent($site) . '
     ' . render_mobile_menu_script() . '
+    ' . render_accessibility_script($site) . '
     ' . render_cookie_consent_script() . '
   </body>
 </html>';
@@ -73,13 +80,26 @@ function ui_text(array $site, string $key): string
         'ro' => [
             'aria_main_nav' => 'Navigație principală',
             'aria_language_nav' => 'Limbă',
+            'skip_to_content' => 'Sari la conținut',
             'footer_schedule' => 'Program',
             'footer_contact' => 'Contact',
             'footer_links' => 'Linkuri utile',
             'footer_terms' => 'Termene și condiții',
-            'footer_privacy' => 'Politica privind datele personale',
+            'footer_privacy' => 'Privacy Policy / Politica de confidențialitate',
+            'footer_accessibility' => 'Accesibilitate',
             'footer_data_rights' => 'Informare drepturi persoane vizate',
             'footer_retention' => 'Politica de retenție date',
+            'a11y_button' => 'Opțiuni accesibilitate',
+            'a11y_title' => 'Opțiuni de accesibilitate',
+            'a11y_text_size' => 'Dimensiune text',
+            'a11y_text_default' => 'Normal',
+            'a11y_text_large' => 'Mare',
+            'a11y_text_larger' => 'Foarte mare',
+            'a11y_contrast' => 'Contrast ridicat',
+            'a11y_links' => 'Subliniază linkurile',
+            'a11y_motion' => 'Reduce animațiile',
+            'a11y_reset' => 'Resetează',
+            'a11y_close' => 'Închide',
             'legal_identity_title' => 'Date de identificare',
             'legal_identity_intro' => 'Informații publice despre operatorul serviciilor Local Capital.',
             'legal_name' => 'Denumire legală',
@@ -98,7 +118,7 @@ function ui_text(array $site, string $key): string
             'documents_title' => 'Documente și informări',
             'cookie_title' => 'Preferințe cookie',
             'cookie_text' => 'Folosim cookie-uri necesare pentru funcționarea site-ului. Cookie-urile opționale vor fi folosite doar după acordul tău.',
-            'cookie_privacy' => 'Vezi politica privind datele personale',
+            'cookie_privacy' => 'Vezi Privacy Policy / politica de confidențialitate',
             'cookie_necessary' => 'Doar necesare',
             'cookie_accept_all' => 'Accept toate',
             'menu_toggle' => 'Meniu',
@@ -144,13 +164,26 @@ function ui_text(array $site, string $key): string
         'en' => [
             'aria_main_nav' => 'Main navigation',
             'aria_language_nav' => 'Language',
+            'skip_to_content' => 'Skip to content',
             'footer_schedule' => 'Schedule',
             'footer_contact' => 'Contact',
             'footer_links' => 'Useful links',
             'footer_terms' => 'Terms and conditions',
-            'footer_privacy' => 'Personal data policy',
+            'footer_privacy' => 'Privacy Policy',
+            'footer_accessibility' => 'Accessibility',
             'footer_data_rights' => 'Data subject rights notice',
             'footer_retention' => 'Data retention policy',
+            'a11y_button' => 'Accessibility options',
+            'a11y_title' => 'Accessibility options',
+            'a11y_text_size' => 'Text size',
+            'a11y_text_default' => 'Default',
+            'a11y_text_large' => 'Large',
+            'a11y_text_larger' => 'Very large',
+            'a11y_contrast' => 'High contrast',
+            'a11y_links' => 'Underline links',
+            'a11y_motion' => 'Reduce motion',
+            'a11y_reset' => 'Reset',
+            'a11y_close' => 'Close',
             'legal_identity_title' => 'Legal identification',
             'legal_identity_intro' => 'Public information about the operator of the Local Capital services.',
             'legal_name' => 'Legal name',
@@ -169,7 +202,7 @@ function ui_text(array $site, string $key): string
             'documents_title' => 'Documents and notices',
             'cookie_title' => 'Cookie preferences',
             'cookie_text' => 'We use necessary cookies to keep the website working. Optional cookies will only be used after your consent.',
-            'cookie_privacy' => 'View the personal data policy',
+            'cookie_privacy' => 'View the Privacy Policy',
             'cookie_necessary' => 'Necessary only',
             'cookie_accept_all' => 'Accept all',
             'menu_toggle' => 'Menu',
@@ -215,13 +248,26 @@ function ui_text(array $site, string $key): string
         'hu' => [
             'aria_main_nav' => 'Fő navigáció',
             'aria_language_nav' => 'Nyelv',
+            'skip_to_content' => 'Ugrás a tartalomra',
             'footer_schedule' => 'Nyitvatartás',
             'footer_contact' => 'Kapcsolat',
             'footer_links' => 'Hasznos linkek',
             'footer_terms' => 'Általános szerződési feltételek',
-            'footer_privacy' => 'Személyes adatok kezelése',
+            'footer_privacy' => 'Privacy Policy / Adatvédelmi tájékoztató',
+            'footer_accessibility' => 'Akadálymentesítés',
             'footer_data_rights' => 'Érintetti jogokról szóló tájékoztató',
             'footer_retention' => 'Adatmegőrzési szabályzat',
+            'a11y_button' => 'Akadálymentesítési beállítások',
+            'a11y_title' => 'Akadálymentesítési beállítások',
+            'a11y_text_size' => 'Szövegméret',
+            'a11y_text_default' => 'Normál',
+            'a11y_text_large' => 'Nagy',
+            'a11y_text_larger' => 'Nagyon nagy',
+            'a11y_contrast' => 'Magas kontraszt',
+            'a11y_links' => 'Linkek aláhúzása',
+            'a11y_motion' => 'Animációk csökkentése',
+            'a11y_reset' => 'Visszaállítás',
+            'a11y_close' => 'Bezárás',
             'legal_identity_title' => 'Jogi azonosító adatok',
             'legal_identity_intro' => 'Nyilvános információk a Local Capital szolgáltatásainak üzemeltetőjéről.',
             'legal_name' => 'Jogi név',
@@ -240,7 +286,7 @@ function ui_text(array $site, string $key): string
             'documents_title' => 'Dokumentumok és tájékoztatók',
             'cookie_title' => 'Cookie beállítások',
             'cookie_text' => 'Az oldal működéséhez szükséges sütiket használunk. Az opcionális sütiket csak a hozzájárulásod után használjuk.',
-            'cookie_privacy' => 'Adatkezelési tájékoztató megnyitása',
+            'cookie_privacy' => 'Privacy Policy / adatvédelmi tájékoztató megnyitása',
             'cookie_necessary' => 'Csak szükséges',
             'cookie_accept_all' => 'Mindet elfogadom',
             'menu_toggle' => 'Menü',
@@ -593,6 +639,144 @@ function render_mobile_menu_script(): string
 </script>';
 }
 
+function render_accessibility_tools(array $site): string
+{
+    $panelId = 'accessibility-panel';
+
+    return '<div class="accessibility-tools" data-a11y-tools>
+    <button class="accessibility-toggle" type="button" aria-expanded="false" aria-controls="' . e($panelId) . '" data-a11y-toggle>
+      <span aria-hidden="true">Aa</span>
+      <span>' . e(ui_text($site, 'a11y_button')) . '</span>
+    </button>
+    <aside class="accessibility-panel" id="' . e($panelId) . '" aria-labelledby="accessibility-title" hidden>
+      <div class="accessibility-panel-header">
+        <h2 id="accessibility-title">' . e(ui_text($site, 'a11y_title')) . '</h2>
+        <button type="button" class="icon-button" data-a11y-close aria-label="' . e(ui_text($site, 'a11y_close')) . '">×</button>
+      </div>
+      <fieldset>
+        <legend>' . e(ui_text($site, 'a11y_text_size')) . '</legend>
+        <div class="segmented-control">
+          <button type="button" data-a11y-font="default" aria-pressed="true">' . e(ui_text($site, 'a11y_text_default')) . '</button>
+          <button type="button" data-a11y-font="large" aria-pressed="false">' . e(ui_text($site, 'a11y_text_large')) . '</button>
+          <button type="button" data-a11y-font="larger" aria-pressed="false">' . e(ui_text($site, 'a11y_text_larger')) . '</button>
+        </div>
+      </fieldset>
+      <div class="accessibility-switches">
+        <button type="button" data-a11y-toggle-pref="contrast" aria-pressed="false">' . e(ui_text($site, 'a11y_contrast')) . '</button>
+        <button type="button" data-a11y-toggle-pref="links" aria-pressed="false">' . e(ui_text($site, 'a11y_links')) . '</button>
+        <button type="button" data-a11y-toggle-pref="motion" aria-pressed="false">' . e(ui_text($site, 'a11y_motion')) . '</button>
+      </div>
+      <button class="button button-light" type="button" data-a11y-reset>' . e(ui_text($site, 'a11y_reset')) . '</button>
+    </aside>
+  </div>';
+}
+
+function render_accessibility_script(array $site): string
+{
+    return '<script nonce="' . e(csp_nonce()) . '">
+(() => {
+  const root = document.documentElement;
+  const panel = document.querySelector("[data-a11y-tools] .accessibility-panel");
+  const toggle = document.querySelector("[data-a11y-toggle]");
+  const close = document.querySelector("[data-a11y-close]");
+  if (!panel || !toggle) {
+    return;
+  }
+
+  const storageKey = "lc_accessibility_preferences";
+  const defaults = { font: "default", contrast: false, links: false, motion: false };
+  const readPrefs = () => {
+    try {
+      return { ...defaults, ...JSON.parse(localStorage.getItem(storageKey) || "{}") };
+    } catch (error) {
+      return { ...defaults };
+    }
+  };
+  let prefs = readPrefs();
+
+  const savePrefs = () => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(prefs));
+    } catch (error) {
+      // Preferences still apply for the current page even when storage is unavailable.
+    }
+  };
+  const setBoolAttr = (name, enabled) => {
+    if (enabled) {
+      root.setAttribute(name, "true");
+    } else {
+      root.removeAttribute(name);
+    }
+  };
+  const applyPrefs = () => {
+    if (prefs.font && prefs.font !== "default") {
+      root.setAttribute("data-a11y-font", prefs.font);
+    } else {
+      root.removeAttribute("data-a11y-font");
+    }
+    setBoolAttr("data-a11y-contrast", prefs.contrast);
+    setBoolAttr("data-a11y-links", prefs.links);
+    setBoolAttr("data-a11y-motion", prefs.motion);
+
+    panel.querySelectorAll("[data-a11y-font]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.a11yFont === prefs.font ? "true" : "false");
+    });
+    panel.querySelectorAll("[data-a11y-toggle-pref]").forEach((button) => {
+      button.setAttribute("aria-pressed", prefs[button.dataset.a11yTogglePref] ? "true" : "false");
+    });
+  };
+  const setPanel = (open) => {
+    panel.hidden = !open;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      const first = panel.querySelector("button");
+      if (first) {
+        first.focus();
+      }
+    }
+  };
+
+  applyPrefs();
+  toggle.addEventListener("click", () => setPanel(panel.hidden));
+  if (close) {
+    close.addEventListener("click", () => {
+      setPanel(false);
+      toggle.focus();
+    });
+  }
+  panel.querySelectorAll("[data-a11y-font]").forEach((button) => {
+    button.addEventListener("click", () => {
+      prefs.font = button.dataset.a11yFont || "default";
+      savePrefs();
+      applyPrefs();
+    });
+  });
+  panel.querySelectorAll("[data-a11y-toggle-pref]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.a11yTogglePref;
+      prefs[key] = !prefs[key];
+      savePrefs();
+      applyPrefs();
+    });
+  });
+  const reset = panel.querySelector("[data-a11y-reset]");
+  if (reset) {
+    reset.addEventListener("click", () => {
+      prefs = { ...defaults };
+      savePrefs();
+      applyPrefs();
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !panel.hidden) {
+      setPanel(false);
+      toggle.focus();
+    }
+  });
+})();
+</script>';
+}
+
 function cookie_consent_cookie_name(): string
 {
     return 'lc_cookie_consent';
@@ -706,8 +890,9 @@ function render_footer(array $site): string
         <h2>' . e(ui_text($site, 'footer_links')) . '</h2>
         <p><a href="' . e($settings['anpcUrl']) . '" target="_blank" rel="nofollow noopener">' . e($settings['anpcLabel']) . '</a></p>
         <p><a href="' . e(localized_path('/gdpr', $language)) . '">GDPR</a></p>
+        <p><a href="' . e(localized_path('/accesibilitate', $language)) . '">' . e(ui_text($site, 'footer_accessibility')) . '</a></p>
         <p><a href="' . e(localized_path('/termene-si-conditii', $language)) . '">' . e(ui_text($site, 'footer_terms')) . '</a></p>
-        <p><a href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">' . e(ui_text($site, 'footer_privacy')) . '</a></p>
+        <p><a rel="privacy-policy" href="' . e(localized_path('/politica-privind-datele-personale', $language)) . '">' . e(ui_text($site, 'footer_privacy')) . '</a></p>
         <p><a href="/downloads/informare-privind-drepturile-persoanelor-vizate.pdf">' . e(ui_text($site, 'footer_data_rights')) . '</a></p>
         <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">' . e(ui_text($site, 'footer_retention')) . '</a></p>
         <div class="footer-regulatory-logos" aria-label="ANPC, SAL si SOL">
@@ -1348,7 +1533,7 @@ function render_llms_txt(): string
             }
         }
 
-        $legalPages = array_intersect_key($site['pages'], array_flip(['gdpr', 'privacy', 'terms']));
+        $legalPages = array_intersect_key($site['pages'], array_flip(['accessibility', 'gdpr', 'privacy', 'terms']));
         if ($legalPages) {
             $lines[] = '';
             $lines[] = '### Legal and policy pages';

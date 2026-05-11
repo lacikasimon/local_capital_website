@@ -296,3 +296,80 @@ A gyors hitelt nem érdemes kizárólag a gyorsaság miatt választani. Ellenőr
 
 Az első igényléshez érvényes személyazonosító okmány szükséges. Az elbírálástól függően további információra lehet szükség.'
 WHERE source_type = 'post' AND slug = 'credit-rapid-cu-buletinul' AND language_code = 'hu';
+
+INSERT INTO pages (language_code, page_key, path, title, summary, body, cta_label, cta_href, secondary_cta_label, secondary_cta_href, extra_json) VALUES
+('ro', 'accessibility', '/accesibilitate', 'Declarație de accesibilitate', 'Informații despre măsurile de accesibilitate ale website-ului Local Capital și modul de transmitere a feedbackului.', '## Angajamentul nostru
+
+LOCAL CAPITAL IFN S.A. urmărește ca website-ul Local Capital să poată fi folosit de cât mai multe persoane, inclusiv de persoane care folosesc tastatura, cititoare de ecran, mărire de text sau setări de contrast ridicat.
+
+Website-ul este dezvoltat având ca reper standardul european EN 301 549 și criteriile WCAG 2.1 nivel AA, cu îmbunătățiri practice din WCAG 2.2 acolo unde sunt relevante pentru utilizatori.
+
+## Funcții disponibile
+
+- navigare cu tastatura și link „sari la conținut”;
+- indicator vizibil de focus pentru elementele interactive;
+- opțiuni pentru text mai mare, contrast ridicat, linkuri subliniate și reducerea animațiilor;
+- structură semantică pentru titluri, meniuri, formulare și zone de conținut;
+- metadate, etichete și texte alternative pentru elementele importante.
+
+## Stadiu de conformitate
+
+Website-ul este în curs de verificare și îmbunătățire continuă. Unele documente PDF sau conținuturi importate pot necesita verificări suplimentare pentru accesibilitate completă.
+
+## Feedback
+
+Dacă întâmpini o barieră de accesibilitate, te rugăm să ne scrii la info@localcapital.ro sau protectiadatelor@localcapital.ro. Include pagina, problema întâlnită și tehnologia de asistare folosită, dacă este relevant.
+
+Ultima revizuire: 11 mai 2026.', NULL, NULL, NULL, NULL, '{"aiSummary":"Local Capital publică o declarație de accesibilitate și oferă opțiuni pentru text mărit, contrast ridicat, linkuri subliniate, reducerea animațiilor și navigare cu tastatura.","faq":[{"question":"Pot naviga site-ul folosind doar tastatura?","answer":"Da. Meniurile, linkurile, formularele și opțiunile de accesibilitate sunt concepute pentru utilizare cu tastatura."},{"question":"Cum pot mări textul?","answer":"Folosește butonul Opțiuni accesibilitate din pagină sau funcția de zoom a browserului."},{"question":"Unde pot raporta o problemă de accesibilitate?","answer":"Trimite un mesaj la info@localcapital.ro sau protectiadatelor@localcapital.ro, cu pagina și problema întâlnită."}]}'),
+('en', 'accessibility', '/accessibility', 'Accessibility statement', 'Information about Local Capital website accessibility measures and feedback channels.', '## Our commitment
+
+LOCAL CAPITAL IFN S.A. aims to make the Local Capital website usable by as many people as possible, including people who use a keyboard, screen reader, text enlargement, or high-contrast settings.
+
+The website is developed with reference to the European standard EN 301 549 and WCAG 2.1 Level AA criteria, with practical WCAG 2.2 improvements where they help users.
+
+## Available features
+
+- keyboard navigation and a skip-to-content link;
+- visible focus indicator for interactive elements;
+- options for larger text, high contrast, underlined links, and reduced motion;
+- semantic structure for headings, menus, forms, and content areas;
+- metadata, labels, and alternative text for important elements.
+
+## Compliance status
+
+The website is under continuous review and improvement. Some PDF documents or imported content may still require additional accessibility checks.
+
+## Feedback
+
+If you encounter an accessibility barrier, please contact us at info@localcapital.ro or protectiadatelor@localcapital.ro. Include the page, the issue encountered, and the assistive technology used, if relevant.
+
+Last reviewed: 11 May 2026.', NULL, NULL, NULL, NULL, '{"aiSummary":"Local Capital publishes an accessibility statement and provides options for larger text, high contrast, underlined links, reduced motion, and keyboard navigation.","faq":[{"question":"Can I navigate the website using only a keyboard?","answer":"Yes. Menus, links, forms, and accessibility options are designed for keyboard use."},{"question":"How can I enlarge the text?","answer":"Use the Accessibility options button on the page or your browser zoom function."},{"question":"Where can I report an accessibility issue?","answer":"Send a message to info@localcapital.ro or protectiadatelor@localcapital.ro with the page and the issue encountered."}]}'),
+('hu', 'accessibility', '/akadalymentesites', 'Akadálymentesítési nyilatkozat', 'Tájékoztatás a Local Capital weboldal akadálymentesítési megoldásairól és visszajelzési csatornáiról.', '## Elkötelezettségünk
+
+A LOCAL CAPITAL IFN S.A. célja, hogy a Local Capital weboldalt minél több ember használhassa, beleértve azokat is, akik billentyűzettel, képernyőolvasóval, nagyított szöveggel vagy magas kontrasztú beállításokkal böngésznek.
+
+A weboldalt az EN 301 549 európai szabvány és a WCAG 2.1 AA szintű kritériumai alapján fejlesztjük, a felhasználók számára hasznos WCAG 2.2 fejlesztésekkel kiegészítve.
+
+## Elérhető funkciók
+
+- billentyűzetes navigáció és „ugrás a tartalomra” link;
+- jól látható fókuszjelzés az interaktív elemeknél;
+- nagyobb szöveg, magas kontraszt, aláhúzott linkek és csökkentett animációk;
+- szemantikus szerkezet a címekhez, menükhöz, űrlapokhoz és tartalmi részekhez;
+- metaadatok, címkék és alternatív szövegek a fontos elemekhez.
+
+## Megfelelőségi állapot
+
+A weboldal folyamatos ellenőrzés és fejlesztés alatt áll. Egyes PDF dokumentumok vagy importált tartalmak további akadálymentesítési ellenőrzést igényelhetnek.
+
+## Visszajelzés
+
+Ha akadálymentesítési problémát tapasztalsz, írj az info@localcapital.ro vagy protectiadatelor@localcapital.ro címre. Kérjük, add meg az érintett oldalt, a problémát és az alkalmazott kisegítő technológiát, ha releváns.
+
+Utolsó felülvizsgálat: 2026. május 11.', NULL, NULL, NULL, NULL, '{"aiSummary":"A Local Capital akadálymentesítési nyilatkozatot tesz közzé, és nagyobb szöveg, magas kontraszt, aláhúzott linkek, csökkentett animációk és billentyűzetes navigáció opciókat biztosít.","faq":[{"question":"Használható az oldal csak billentyűzettel?","answer":"Igen. A menük, linkek, űrlapok és akadálymentesítési beállítások billentyűzettel is használhatók."},{"question":"Hogyan tudom növelni a szöveg méretét?","answer":"Használd az oldalon lévő Akadálymentesítési beállítások gombot vagy a böngésző nagyítás funkcióját."},{"question":"Hol jelezhetek akadálymentesítési problémát?","answer":"Írj az info@localcapital.ro vagy protectiadatelor@localcapital.ro címre, az érintett oldal és a probléma megadásával."}]}')
+ON DUPLICATE KEY UPDATE
+path = VALUES(path),
+title = VALUES(title),
+summary = VALUES(summary),
+body = VALUES(body),
+extra_json = VALUES(extra_json);
