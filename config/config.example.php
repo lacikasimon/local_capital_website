@@ -13,6 +13,8 @@ return [
         'base_url' => 'https://localcapital.ro',
         'session_name' => 'LC_ADMIN',
         'form_secret' => 'change-this-random-form-secret',
+        'auto_apply_content_updates' => true,
+        'force_content_updates' => false,
         'debug' => false,
     ],
     'security' => [

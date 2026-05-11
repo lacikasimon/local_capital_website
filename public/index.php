@@ -7,6 +7,8 @@ require __DIR__ . '/../app/views.php';
 require __DIR__ . '/../app/admin.php';
 require __DIR__ . '/../app/anaf.php';
 
+apply_content_updates_for_request();
+
 [$language, $path] = detect_language_and_path();
 $method = method();
 
@@ -42,6 +44,14 @@ try {
                 redirect('/admin?lang=' . $adminLang . '&ok=settings');
             }
 
+            if ($path === '/admin/users') {
+                handle_admin_user_post($site, $admin);
+            }
+
+            if (preg_match('#^/admin/users/([0-9]+)$#', $path, $match)) {
+                handle_admin_user_post($site, $admin, (int) $match[1]);
+            }
+
             if (preg_match('#^/admin/pages/([a-z0-9-]+)$#', $path, $match)) {
                 save_page($site, $match[1]);
                 redirect('/admin/pages/' . $match[1] . '?lang=' . $adminLang . '&ok=1');
@@ -70,6 +80,21 @@ try {
 
         if ($path === '/admin/settings') {
             echo render_settings_form($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/pages') {
+            echo render_pages_index($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/posts') {
+            echo render_posts_index($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/users') {
+            echo render_admin_users($site, $admin);
             exit;
         }
 

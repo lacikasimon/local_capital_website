@@ -1,6 +1,8 @@
 <?php
 
 $recaptchaEnabled = filter_var(getenv('RECAPTCHA_ENABLED') ?: false, FILTER_VALIDATE_BOOLEAN);
+$autoApplyContent = getenv('LOCALCAPITAL_AUTO_APPLY_CONTENT');
+$forceContentUpdates = getenv('LOCALCAPITAL_FORCE_CONTENT_UPDATES');
 
 return [
     'db' => [
@@ -15,6 +17,12 @@ return [
         'base_url' => getenv('APP_BASE_URL') ?: 'http://localhost:8080',
         'session_name' => 'LC_ADMIN_DOCKER',
         'form_secret' => getenv('APP_FORM_SECRET') ?: 'localcapital-docker-form-secret',
+        'auto_apply_content_updates' => $autoApplyContent === false || $autoApplyContent === ''
+            ? true
+            : filter_var($autoApplyContent, FILTER_VALIDATE_BOOLEAN),
+        'force_content_updates' => $forceContentUpdates === false || $forceContentUpdates === ''
+            ? false
+            : filter_var($forceContentUpdates, FILTER_VALIDATE_BOOLEAN),
         'debug' => true,
     ],
     'security' => [

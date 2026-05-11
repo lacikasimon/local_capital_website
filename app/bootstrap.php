@@ -118,6 +118,140 @@ function db(): PDO
     return $pdo;
 }
 
+function content_update_files(): array
+{
+    $fileList = trim((string) (getenv('LOCALCAPITAL_CONTENT_UPDATE_FILES') ?: ''));
+    if ($fileList !== '') {
+        return array_map(static fn (string $file): string => ROOT_DIR . '/' . ltrim(trim($file), '/'), explode(',', $fileList));
+    }
+
+    $configured = app_config()['app']['content_update_files'] ?? null;
+    if (is_array($configured) && $configured) {
+        return array_map(static fn (string $file): string => ROOT_DIR . '/' . ltrim(trim($file), '/'), $configured);
+    }
+
+    return [
+        ROOT_DIR . '/database/content-overrides.sql',
+        ROOT_DIR . '/database/ifn-trust-content.sql',
+        ROOT_DIR . '/database/multilingual-content-fixes.sql',
+        ROOT_DIR . '/database/anaf-consent.sql',
+    ];
+}
+
+function content_updates_enabled(): bool
+{
+    $env = getenv('LOCALCAPITAL_AUTO_APPLY_CONTENT');
+    if ($env !== false && $env !== '') {
+        return filter_var($env, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    return (bool) (app_config()['app']['auto_apply_content_updates'] ?? true);
+}
+
+function content_update_force_enabled(): bool
+{
+    $env = getenv('LOCALCAPITAL_FORCE_CONTENT_UPDATES');
+    if ($env !== false && $env !== '') {
+        return filter_var($env, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    return (bool) (app_config()['app']['force_content_updates'] ?? false);
+}
+
+function content_update_db(int $retries = 1, int $sleepSeconds = 1): PDO
+{
+    $lastError = null;
+    for ($attempt = 1; $attempt <= $retries; $attempt++) {
+        try {
+            $pdo = db();
+            $pdo->query('SELECT 1');
+            return $pdo;
+        } catch (Throwable $error) {
+            $lastError = $error;
+            if ($attempt < $retries) {
+                sleep($sleepSeconds);
+            }
+        }
+    }
+
+    throw $lastError ?? new RuntimeException('Database connection failed.');
+}
+
+function ensure_content_update_table(PDO $pdo): void
+{
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS content_update_runs (
+            update_key VARCHAR(190) NOT NULL,
+            checksum CHAR(64) NOT NULL,
+            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (update_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+}
+
+function apply_content_updates(bool $dryRun = false, bool $force = false, int $retries = 1, int $sleepSeconds = 1): array
+{
+    $pdo = $dryRun ? null : content_update_db($retries, $sleepSeconds);
+    if ($pdo instanceof PDO) {
+        ensure_content_update_table($pdo);
+    }
+
+    $results = [];
+    foreach (content_update_files() as $file) {
+        if (!is_file($file)) {
+            $results[] = ['file' => basename($file), 'status' => 'missing'];
+            continue;
+        }
+
+        $sql = file_get_contents($file);
+        if ($sql === false) {
+            throw new RuntimeException($file . ' could not be read.');
+        }
+
+        $key = str_replace(ROOT_DIR . '/', '', $file);
+        $checksum = hash('sha256', $sql);
+
+        if ($dryRun) {
+            $results[] = ['file' => $key, 'status' => 'ready', 'checksum' => $checksum];
+            continue;
+        }
+
+        $stmt = $pdo->prepare('SELECT checksum FROM content_update_runs WHERE update_key = ?');
+        $stmt->execute([$key]);
+        $previousChecksum = $stmt->fetchColumn();
+
+        if (!$force && $previousChecksum === $checksum) {
+            $results[] = ['file' => $key, 'status' => 'unchanged', 'checksum' => $checksum];
+            continue;
+        }
+
+        $pdo->exec($sql);
+        $stmt = $pdo->prepare('INSERT INTO content_update_runs (update_key, checksum) VALUES (?, ?) ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), applied_at = CURRENT_TIMESTAMP');
+        $stmt->execute([$key, $checksum]);
+        $results[] = ['file' => $key, 'status' => 'applied', 'checksum' => $checksum];
+    }
+
+    return $results;
+}
+
+function apply_content_updates_for_request(): void
+{
+    static $done = false;
+    if ($done || !content_updates_enabled()) {
+        return;
+    }
+    $done = true;
+
+    try {
+        apply_content_updates(false, content_update_force_enabled());
+    } catch (Throwable $error) {
+        error_log('LOCALCAPITAL_CONTENT_UPDATE_FAILED ' . $error->getMessage());
+        if (!empty(app_config()['app']['debug'])) {
+            throw $error;
+        }
+    }
+}
+
 function start_secure_session(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {

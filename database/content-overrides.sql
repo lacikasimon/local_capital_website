@@ -34,7 +34,7 @@ Decizia ta de azi definește ziua de mâine. Contactează-ne astăzi pentru a ne
   secondary_cta_href = '/contract',
   extra_json = '{"featuresTitle":"Avantaje Local Capital","features":[{"title":"Rambursare simplă","text":"Ai libertatea de a alege metoda de plată a creditului tău, inclusiv prin serviciul PayPoint. Local Capital îți oferă soluții rapide și simple pentru rambursare."},{"title":"Flexibilitate","text":"Cu grijă și atenție la situația ta financiară, Local Capital îți pune la dispoziție opțiuni de rambursare flexibile și adaptate stilului tău de viață."},{"title":"Direct pe card","text":"Primești banii rapid, direct în contul tău bancar. Local Capital îți transferă fondurile în siguranță și eficiență, astfel încât să le ai la îndemână într-o clipă."},{"title":"Credite rapide","text":"La Local Capital efectuăm evaluări rapide și eficiente, oferindu-ți posibilitatea să obții creditul de care ai nevoie în cel mai scurt timp posibil."}],"servicesTitle":"Oferim cele mai bune servicii de creditare","servicesIntro":"Indiferent de natura proiectului sau visului dumneavoastră, Local Capital este aici pentru a vă oferi sprijinul financiar de care aveți nevoie pentru a vă transforma aspirațiile în realitate.","services":[{"title":"Credite rapide pentru sănătate și familie","text":"Ai nevoie de bani pentru sănătate sau familie? Local Capital îți oferă soluții rapide și flexibile pentru cheltuieli medicale și nevoi urgente.","image":"/assets/service-health.jpg"},{"title":"Credite pentru evenimente de familie","text":"Fie că vrei o vacanță, un cadou pentru cei dragi sau să acoperi cheltuieli neprevăzute, Local Capital îți oferă credit simplu și rapid pentru familie.","image":"/assets/service-home.jpg"},{"title":"Credite pentru locuință","text":"Transformă-ți locuința așa cum îți dorești. Cu Local Capital poți obține rapid un credit pentru renovare, reamenajare sau îmbunătățiri în casa ta.","image":"/assets/service-home.jpg"},{"title":"Credite rapide pentru frumusețe și îngrijire personală","text":"Vrei să-ți îmbunătățești rapid aspectul fizic și nu ai fondurile necesare? Cu Local Capital obții credite rapide pentru a investi în frumusețea și încrederea ta.","image":"/assets/service-health.jpg"},{"title":"Credite pentru cadouri și surprize","text":"Surprinde-ți familia și prietenii cu cadouri speciale, fără grija banilor. Local Capital îți oferă soluții rapide pentru a face bucurii celor dragi.","image":"/assets/service-home.jpg"},{"title":"Credit pentru mașină nouă","text":"Transformă-ți visul de a conduce o mașină nouă în realitate. Cu Local Capital obții finanțare rapidă și avantajoasă pentru achiziția autoturismului dorit.","image":"/assets/service-car.jpg"}],"requirementsTitle":"Asta este tot ce ai nevoie pentru a avea totul","requirements":[{"title":"Credit rapid doar cu buletinul","text":"Pentru a accesa creditul rapid, ai nevoie doar de un act de identitate. Fără complicații, fără documente suplimentare, simplu și eficient."},{"title":"Credit simplu cu factură curentă","text":"Aplică pentru credit ușor și sigur. Este suficient să furnizezi o factură curentă pentru verificare, iar noi îți evaluăm eligibilitatea imediat."},{"title":"Bani în doar 2 ore","text":"Cu Local Capital, primești banii direct în contul tău bancar în maximum 2 ore de la solicitare. Rapid, sigur și fără complicații."}],"sourceUrl":"https://localcapital.ro/","sourceModified":"2026-03-24T14:41:46"}'
 WHERE page_key = 'home'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET
@@ -58,7 +58,7 @@ Suntem o companie IFN ce oferă servicii financiare flexibile, adaptate nevoilor
 Misiunea Local Capital este să ofere sprijin financiar în momente cheie și să fie partenerul care face diferența atunci când apare o provocare. Activitatea noastră este ghidată de integritate, responsabilitate și claritate.',
   extra_json = '{"valuesTitle":"Valorile noastre","values":[{"title":"Integritate","text":"Acționăm corect și transparent în relația cu fiecare client."},{"title":"Responsabilitate","text":"Analizăm fiecare solicitare cu atenție și respect față de situația financiară a clientului."},{"title":"Claritate","text":"Explicăm condițiile și pașii procesului într-un limbaj ușor de înțeles."}]}'
 WHERE page_key = 'about'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET
@@ -77,7 +77,7 @@ Pachetul de finanțare este conceput pentru a-ți oferi control asupra gestionă
 Echipa Local Capital îți oferă asistență în fiecare etapă a procesului, astfel încât alegerea finală să fie clară și potrivită situației tale.',
   extra_json = '{"products":[{"title":"Credit Flex Basic","text":"O opțiune pentru cei care vor să se concentreze pe rambursarea mai rapidă a împrumutului."},{"title":"Credit Flex Basic PMT","text":"O variantă pentru cei care preferă rate constante pe durata perioadei de rambursare."},{"title":"Credit Flex Juridic","text":"O soluție gândită pentru nevoi specifice, cu discuție personalizată înainte de ofertare."}],"featuresTitle":"Avantaje","features":[{"title":"Rate lunare personalizate","text":"Putem discuta rate adaptate bugetului tău, pentru plăți mai ușor de gestionat."},{"title":"Perioade de rambursare variabile","text":"Durata împrumutului poate fi aleasă în funcție de planurile tale financiare."}]}'
 WHERE page_key = 'contract'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET
@@ -90,22 +90,22 @@ Pentru informații despre eligibilitate, produse de creditare sau pașii următo
 Consultanții Local Capital vor răspunde în cel mai scurt timp la întrebările tale, în timpul programului de lucru.',
   extra_json = '{"formTitle":"Trimite un mesaj","privacyNote":"Prin trimiterea unui email, confirmi că ai citit informarea privind prelucrarea datelor personale."}'
 WHERE page_key = 'contact'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET summary = 'Politica GDPR și informații despre prelucrarea datelor cu caracter personal în cadrul Local Capital IFN S.A.'
 WHERE page_key = 'gdpr'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET summary = 'Informare privind drepturile persoanelor vizate și modul în care Local Capital IFN S.A. prelucrează datele personale.'
 WHERE page_key = 'privacy'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE pages
 SET summary = 'Termene, condiții și informații privind utilizarea website-ului Local Capital.'
 WHERE page_key = 'terms'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -119,7 +119,7 @@ Echipa Local Capital îți explică pașii, condițiile și opțiunile disponibi
   published = 1
 WHERE source_type = 'post'
   AND slug = 'credit-rapid-cu-buletinul'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -135,7 +135,7 @@ Pentru solicitarea inițială ai nevoie de un act de identitate valid, date de c
   published = 1
 WHERE source_type = 'service'
   AND slug = 'personal-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -151,7 +151,7 @@ Discutăm nevoia ta, verificăm eligibilitatea și îți prezentăm o variantă 
   published = 1
 WHERE source_type = 'service'
   AND slug = 'education-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -167,7 +167,7 @@ Cu Local Capital poți obține sprijin pentru planuri importante: investiții pe
   published = 1
 WHERE source_type = 'service'
   AND slug = 'business-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -183,7 +183,7 @@ Spune-ne ce plan ai, verificăm eligibilitatea și stabilim împreună pașii ur
   published = 1
 WHERE source_type = 'service'
   AND slug = 'property-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -199,7 +199,7 @@ Obții o evaluare rapidă, iar după aprobare fondurile pot ajunge direct pe car
   published = 1
 WHERE source_type = 'service'
   AND slug = 'wedding-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -215,7 +215,7 @@ După verificarea solicitării și aprobarea creditului, fondurile pot fi transf
   published = 1
 WHERE source_type = 'service'
   AND slug = 'auto-car-loan'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -229,7 +229,7 @@ Pentru informații actualizate despre soluțiile de creditare Local Capital, con
   published = 1
 WHERE source_type = 'case_study'
   AND slug = 'personal-banking'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -243,7 +243,7 @@ Pentru informații actualizate despre soluțiile de creditare Local Capital, con
   published = 1
 WHERE source_type = 'case_study'
   AND slug = 'business-planning'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -257,7 +257,7 @@ Pentru informații actualizate despre soluțiile de creditare Local Capital, con
   published = 1
 WHERE source_type = 'case_study'
   AND slug = 'meger-acquistion'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 UPDATE posts
 SET
@@ -271,7 +271,7 @@ Pentru informații actualizate despre soluțiile de creditare Local Capital, con
   published = 1
 WHERE source_type = 'case_study'
   AND slug = 'business-tie-ups'
-  AND language_code IN ('ro', 'en', 'hu');
+  AND language_code = 'ro';
 
 -- Language-specific public content overrides.
 INSERT INTO settings (language_code, setting_key, setting_value) VALUES

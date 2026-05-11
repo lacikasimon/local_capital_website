@@ -7,6 +7,12 @@ function admin_url(string $path, string $language): string
     return $path . '?lang=' . rawurlencode($language);
 }
 
+function admin_url_with_params(string $path, array $params = []): string
+{
+    $query = http_build_query($params);
+    return $path . ($query !== '' ? '?' . $query : '');
+}
+
 function admin_current_path(): string
 {
     $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/admin'), PHP_URL_PATH);
@@ -18,11 +24,27 @@ function admin_count_badge(int $count): string
     return $count > 0 ? '<span class="admin-menu-badge">' . e((string) $count) . '</span>' : '';
 }
 
+function admin_language_label(string $language): string
+{
+    return [
+        'ro' => 'Română',
+        'en' => 'English',
+        'hu' => 'Magyar',
+    ][$language] ?? strtoupper($language);
+}
+
+function admin_user_count(): int
+{
+    $stmt = db()->query('SELECT COUNT(*) FROM admin_users');
+    return (int) $stmt->fetchColumn();
+}
+
 function admin_sidebar_menu(array $site, string $currentPath): string
 {
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $messageCount = function_exists('unread_contact_message_count') ? unread_contact_message_count() : 0;
     $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
+    $adminUserCount = admin_user_count();
     $postCount = count($site['posts'] ?? []);
     $pageCount = count($site['pages'] ?? []);
 
@@ -31,13 +53,16 @@ function admin_sidebar_menu(array $site, string $currentPath): string
             ['label' => 'Panou', 'href' => admin_url('/admin', $language), 'match' => ['/admin'], 'exact' => true],
         ],
         'Conținut' => [
-            ['label' => 'Pagini', 'href' => admin_url('/admin', $language) . '#admin-pages', 'match' => ['/admin/pages'], 'badge' => $pageCount],
-            ['label' => 'Articole', 'href' => admin_url('/admin/posts/new', $language), 'match' => ['/admin/posts'], 'badge' => $postCount],
+            ['label' => 'Pagini', 'href' => admin_url('/admin/pages', $language), 'match' => ['/admin/pages'], 'badge' => $pageCount],
+            ['label' => 'Articole', 'href' => admin_url('/admin/posts', $language), 'match' => ['/admin/posts'], 'badge' => $postCount],
             ['label' => 'Setări site', 'href' => admin_url('/admin/settings', $language), 'match' => ['/admin/settings']],
         ],
         'Operațional' => [
             ['label' => 'Acorduri ANAF', 'href' => admin_url('/admin/anaf-consents', $language), 'match' => ['/admin/anaf-consents'], 'badge' => $anafCount, 'strong' => true],
             ['label' => 'Mesaje contact', 'href' => admin_url('/admin/messages', $language), 'match' => ['/admin/messages'], 'badge' => $messageCount],
+        ],
+        'Sistem' => [
+            ['label' => 'Utilizatori', 'href' => admin_url('/admin/users', $language), 'match' => ['/admin/users'], 'badge' => $adminUserCount],
         ],
         'Instrumente' => [
             ['label' => 'Inventar linkuri', 'href' => admin_url('/admin/links', $language), 'match' => ['/admin/links']],
@@ -78,7 +103,7 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
     $languageLinks = '';
     foreach (SUPPORTED_LANGUAGES as $code) {
         $class = $language === $code ? ' class="active"' : '';
-        $languageLinks .= '<a' . $class . ' href="/admin?lang=' . e($code) . '">' . strtoupper(e($code)) . '</a>';
+        $languageLinks .= '<a' . $class . ' href="' . e(admin_url($currentPath, $code)) . '">' . strtoupper(e($code)) . '</a>';
     }
 
     return '<!doctype html>
@@ -318,6 +343,7 @@ function render_admin_dashboard(array $site, array $admin): string
 {
     $messageCount = unread_contact_message_count();
     $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
+    $adminUserCount = admin_user_count();
     $publishedPosts = 0;
     foreach ($site['posts'] as $post) {
         if (!empty($post['published'])) {
@@ -325,55 +351,213 @@ function render_admin_dashboard(array $site, array $admin): string
         }
     }
 
-    $pages = '';
-    foreach ($site['pages'] as $key => $page) {
-        $pages .= '<li><a href="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '">' . e($page['title']) . '</a></li>';
+    $recentPosts = '';
+    foreach (array_slice($site['posts'], 0, 6) as $post) {
+        $recentPosts .= '<li><a href="/admin/posts/' . e($post['slug']) . '?lang=' . e($site['language']) . '">' . e($post['title']) . '</a><span>' . e(admin_post_type_label((string) ($post['source_type'] ?? 'post'))) . '</span></li>';
     }
 
-    $posts = '';
-    foreach ($site['posts'] as $post) {
-        $posts .= '<li><a href="/admin/posts/' . e($post['slug']) . '?lang=' . e($site['language']) . '">' . e($post['title']) . '</a><span>' . ($post['published'] ? 'publicat' : 'draft') . '</span></li>';
-    }
-
-    $body = '<section class="admin-hero-panel">
+    $body = '<section class="admin-overview">
     <div>
       <p class="eyebrow">Bun venit</p>
-      <h2>Panou de administrare Local Capital</h2>
-      <p>Controlează conținutul site-ului, mesajele primite și acordurile ANAF dintr-un meniu clar, fără să cauți prin pagini ascunse.</p>
+      <h2>Admin Local Capital</h2>
+      <p>Lucrezi acum pe textele în limba ' . e(admin_language_label($site['language'])) . '.</p>
     </div>
     <div class="admin-quick-actions">
-      <a class="button" href="/admin/anaf-consents?lang=' . e($site['language']) . '">Acorduri ANAF</a>
+      <a class="button" href="/admin/pages?lang=' . e($site['language']) . '">Pagini</a>
+      <a class="button button-secondary" href="/admin/posts?lang=' . e($site['language']) . '">Articole</a>
       <a class="button button-secondary" href="/admin/anaf-consents/new?lang=' . e($site['language']) . '">Generează link ANAF</a>
-      <a class="button button-secondary" href="/admin/settings?lang=' . e($site['language']) . '">Setări site</a>
+      <a class="button button-secondary" href="/admin/users?lang=' . e($site['language']) . '">Utilizatori</a>
     </div>
   </section>
   <section class="admin-stat-grid" aria-label="Rezumat admin">
-    <a class="admin-stat" href="/admin?lang=' . e($site['language']) . '#admin-pages"><span>Pagini</span><strong>' . e((string) count($site['pages'])) . '</strong></a>
-    <a class="admin-stat" href="/admin/posts/new?lang=' . e($site['language']) . '"><span>Articole publicate</span><strong>' . e((string) $publishedPosts) . '</strong></a>
+    <a class="admin-stat" href="/admin/pages?lang=' . e($site['language']) . '"><span>Pagini</span><strong>' . e((string) count($site['pages'])) . '</strong></a>
+    <a class="admin-stat" href="/admin/posts?lang=' . e($site['language']) . '"><span>Publicate</span><strong>' . e((string) $publishedPosts) . '</strong></a>
     <a class="admin-stat" href="/admin/messages?lang=' . e($site['language']) . '"><span>Mesaje noi</span><strong>' . e((string) $messageCount) . '</strong></a>
     <a class="admin-stat important" href="/admin/anaf-consents?lang=' . e($site['language']) . '"><span>Acorduri ANAF</span><strong>' . e((string) $anafCount) . '</strong></a>
   </section>
-  <section class="admin-grid">
-    <article id="admin-pages" class="admin-card">
-      <h2>Pagini</h2>
-      <ul class="admin-list">' . $pages . '</ul>
-    </article>
-    <article id="admin-posts" class="admin-card">
-      <h2>Articole</h2>
-      <ul class="admin-list">' . ($posts ?: '<li>Nu există articole.</li>') . '</ul>
-      <a class="button button-secondary" href="/admin/posts/new?lang=' . e($site['language']) . '">Articol nou</a>
+  <section class="admin-grid compact">
+    <article class="admin-card">
+      <h2>Conținut</h2>
+      <div class="admin-action-list compact">
+        <a href="/admin/pages?lang=' . e($site['language']) . '"><strong>Pagini</strong><span>Editare rapidă pe RO / EN / HU.</span></a>
+        <a href="/admin/posts?lang=' . e($site['language']) . '"><strong>Articole și servicii</strong><span>Listă compactă cu status, tip și dată.</span></a>
+        <a href="/admin/settings?lang=' . e($site['language']) . '"><strong>Setări site</strong><span>Date de contact și navigație.</span></a>
+      </div>
     </article>
     <article class="admin-card">
-      <h2>Flux operațional</h2>
-      <div class="admin-action-list">
+      <h2>Recente</h2>
+      <ul class="admin-list">' . ($recentPosts ?: '<li>Nu există articole.</li>') . '</ul>
+    </article>
+    <article class="admin-card">
+      <h2>Operațional</h2>
+      <div class="admin-action-list compact">
         <a href="/admin/anaf-consents?lang=' . e($site['language']) . '"><strong>Acorduri ANAF</strong><span>Generează linkuri precompletate, vezi acceptările și descarcă PDF-uri.</span></a>
         <a href="/admin/messages?lang=' . e($site['language']) . '"><strong>Mesaje contact</strong><span>Verifică cererile noi trimise prin formularul public.</span></a>
         <a href="/admin/links?lang=' . e($site['language']) . '"><strong>Inventar linkuri</strong><span>Controlează linkurile importate și resursele externe.</span></a>
       </div>
     </article>
+    <article class="admin-card">
+      <h2>Sistem</h2>
+      <p class="admin-muted">Sunt ' . e((string) $adminUserCount) . ' utilizatori admin configurați.</p>
+      <a class="button button-secondary" href="/admin/users?lang=' . e($site['language']) . '">Gestionează utilizatori</a>
+    </article>
   </section>';
 
     return admin_layout($site, $admin, $body, 'Panou admin');
+}
+
+function admin_post_type_label(string $sourceType): string
+{
+    return [
+        'post' => 'Articol',
+        'service' => 'Serviciu',
+        'case_study' => 'Studiu de caz',
+    ][$sourceType] ?? label_from_key($sourceType);
+}
+
+function render_admin_language_tabs(array $targets, string $currentLanguage, string $label = 'Limba textului'): string
+{
+    $links = '';
+    foreach (SUPPORTED_LANGUAGES as $code) {
+        $target = $targets[$code] ?? ['href' => admin_url(admin_current_path(), $code), 'exists' => true];
+        $classes = ['admin-language-tab'];
+        if ($code === $currentLanguage) {
+            $classes[] = 'active';
+        }
+        if (empty($target['exists'])) {
+            $classes[] = 'missing';
+        }
+        $suffix = empty($target['exists']) ? '<small>nou</small>' : '';
+        $links .= '<a class="' . e(implode(' ', $classes)) . '" href="' . e((string) $target['href']) . '"><strong>' . strtoupper(e($code)) . '</strong><span>' . e(admin_language_label($code)) . '</span>' . $suffix . '</a>';
+    }
+
+    return '<div class="admin-language-tabs" aria-label="' . e($label) . '"><p>' . e($label) . '</p><div>' . $links . '</div></div>';
+}
+
+function admin_page_language_targets(string $key): array
+{
+    $targets = [];
+    foreach (SUPPORTED_LANGUAGES as $code) {
+        $targets[$code] = [
+            'href' => admin_url('/admin/pages/' . $key, $code),
+            'exists' => true,
+        ];
+    }
+
+    return $targets;
+}
+
+function admin_post_language_targets(array $post, string $currentLanguage): array
+{
+    $slug = (string) ($post['slug'] ?? '');
+    $sourceType = (string) ($post['source_type'] ?? 'post');
+    $targets = [];
+    foreach (SUPPORTED_LANGUAGES as $code) {
+        $targets[$code] = [
+            'href' => admin_url('/admin/posts/new', $code),
+            'exists' => false,
+        ];
+    }
+
+    if ($slug === '') {
+        foreach (SUPPORTED_LANGUAGES as $code) {
+            $targets[$code]['href'] = admin_url('/admin/posts/new', $code);
+            $targets[$code]['exists'] = true;
+        }
+        return $targets;
+    }
+
+    $stmt = db()->prepare('SELECT language_code, slug FROM posts WHERE source_type = ? AND slug = ?');
+    $stmt->execute([$sourceType, $slug]);
+    foreach ($stmt->fetchAll() as $row) {
+        $language = normalize_language($row['language_code'] ?? '');
+        $targets[$language] = [
+            'href' => admin_url('/admin/posts/' . (string) $row['slug'], $language),
+            'exists' => true,
+        ];
+    }
+
+    foreach (SUPPORTED_LANGUAGES as $code) {
+        if (!empty($targets[$code]['exists'])) {
+            continue;
+        }
+        $targets[$code]['href'] = admin_url_with_params('/admin/posts/new', [
+            'lang' => $code,
+            'copy_lang' => $currentLanguage,
+            'copy_slug' => $slug,
+            'source_type' => $sourceType,
+        ]);
+    }
+
+    return $targets;
+}
+
+function render_pages_index(array $site, array $admin): string
+{
+    $rows = '';
+    foreach ($site['pages'] as $key => $page) {
+        $publicPath = localized_path((string) ($page['path'] ?? '/'), $site['language']);
+        $rows .= '<tr>
+          <td><strong>' . e($page['title'] ?? label_from_key((string) $key)) . '</strong><br><small>' . e($key) . '</small></td>
+          <td><a href="' . e($publicPath) . '" target="_blank" rel="noopener">' . e($publicPath) . '</a></td>
+          <td>' . render_admin_language_tabs(admin_page_language_targets((string) $key), $site['language'], 'Limbi') . '</td>
+          <td><a class="button button-secondary" href="/admin/pages/' . e((string) $key) . '?lang=' . e($site['language']) . '">Editează</a></td>
+        </tr>';
+    }
+
+    $body = '<section class="admin-card wide">
+      <div class="admin-title-row">
+        <div>
+          <p class="eyebrow">Conținut</p>
+          <h1>Pagini</h1>
+          <p class="admin-muted">Editare compactă pentru textele paginilor, cu selector de limbă pe fiecare rând.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table admin-compact-table">
+          <thead><tr><th>Pagină</th><th>URL public</th><th>Limbi</th><th></th></tr></thead>
+          <tbody>' . ($rows ?: '<tr><td colspan="4">Nu există pagini.</td></tr>') . '</tbody>
+        </table>
+      </div>
+    </section>';
+
+    return admin_layout($site, $admin, $body, 'Pagini');
+}
+
+function render_posts_index(array $site, array $admin): string
+{
+    $rows = '';
+    foreach ($site['posts'] as $post) {
+        $publicPath = localized_path(localized_post_path($post, $site['language']), $site['language']);
+        $status = !empty($post['published']) ? 'published' : 'draft';
+        $rows .= '<tr>
+          <td><strong>' . e($post['title']) . '</strong><br><small>' . e($post['slug']) . '</small></td>
+          <td>' . e(admin_post_type_label((string) ($post['source_type'] ?? 'post'))) . '<br><small>' . e(format_date($post['date'] ?? '')) . '</small></td>
+          <td><span class="status-pill status-' . e($status) . '">' . (!empty($post['published']) ? 'publicat' : 'draft') . '</span></td>
+          <td><a href="' . e($publicPath) . '" target="_blank" rel="noopener">' . e($publicPath) . '</a></td>
+          <td>' . render_admin_language_tabs(admin_post_language_targets($post, $site['language']), $site['language'], 'Limbi') . '</td>
+          <td><a class="button button-secondary" href="/admin/posts/' . e($post['slug']) . '?lang=' . e($site['language']) . '">Editează</a></td>
+        </tr>';
+    }
+
+    $body = '<section class="admin-card wide">
+      <div class="admin-title-row">
+        <div>
+          <p class="eyebrow">Conținut</p>
+          <h1>Articole și servicii</h1>
+          <p class="admin-muted">Status, tip, URL public și selector de limbă într-o singură listă.</p>
+        </div>
+        <a class="button" href="/admin/posts/new?lang=' . e($site['language']) . '">Articol nou</a>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table admin-compact-table">
+          <thead><tr><th>Titlu</th><th>Tip</th><th>Status</th><th>URL public</th><th>Limbi</th><th></th></tr></thead>
+          <tbody>' . ($rows ?: '<tr><td colspan="6">Nu există articole.</td></tr>') . '</tbody>
+        </table>
+      </div>
+    </section>';
+
+    return admin_layout($site, $admin, $body, 'Articole');
 }
 
 function unread_contact_message_count(): int
@@ -481,8 +665,13 @@ function render_page_editor(array $site, array $admin, string $key): ?string
 
     $page = $site['pages'][$key];
     $body = '<section class="admin-card wide">
-    <p class="eyebrow">Pagină</p>
-    <h1>' . e($page['title']) . '</h1>
+    <div class="admin-title-row">
+      <div>
+        <p class="eyebrow">Pagină</p>
+        <h1>' . e($page['title']) . '</h1>
+      </div>
+      ' . render_admin_language_tabs(admin_page_language_targets($key), $site['language']) . '
+    </div>
     <form class="admin-form" action="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '" method="post">
       <input type="hidden" name="lang" value="' . e($site['language']) . '">
       <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
@@ -494,16 +683,55 @@ function render_page_editor(array $site, array $admin, string $key): ?string
     return admin_layout($site, $admin, $body, $page['title']);
 }
 
+function admin_allowed_post_source_types(): array
+{
+    return ['post', 'service', 'case_study'];
+}
+
+function admin_normalize_post_source_type(string $sourceType): string
+{
+    return in_array($sourceType, admin_allowed_post_source_types(), true) ? $sourceType : 'post';
+}
+
+function admin_post_copy_source(): ?array
+{
+    $copyLanguage = normalize_language((string) ($_GET['copy_lang'] ?? DEFAULT_LANGUAGE));
+    $copySlug = trim((string) ($_GET['copy_slug'] ?? ''));
+    $sourceType = admin_normalize_post_source_type((string) ($_GET['source_type'] ?? 'post'));
+    if ($copySlug === '') {
+        return null;
+    }
+
+    $stmt = db()->prepare('SELECT source_type, slug, title, post_date AS date, excerpt, body, published FROM posts WHERE language_code = ? AND source_type = ? AND slug = ? LIMIT 1');
+    $stmt->execute([$copyLanguage, $sourceType, $copySlug]);
+    $source = $stmt->fetch();
+    if (!$source) {
+        return null;
+    }
+
+    return repair_data_encoding(array_merge($source, [
+        'published' => false,
+    ]));
+}
+
 function render_post_editor(array $site, array $admin, string $slug, string $message = '', ?array $oldPost = null): ?string
 {
     $post = [
         'slug' => '',
+        'source_type' => 'post',
         'title' => '',
         'date' => date('Y-m-d'),
         'excerpt' => '',
         'body' => '',
         'published' => false,
     ];
+
+    if ($slug === 'new') {
+        $copy = admin_post_copy_source();
+        if ($copy !== null) {
+            $post = array_merge($post, $copy);
+        }
+    }
 
     if ($slug !== 'new') {
         $post = null;
@@ -522,14 +750,25 @@ function render_post_editor(array $site, array $admin, string $slug, string $mes
         $post = array_merge($post, $oldPost);
     }
 
+    $sourceType = admin_normalize_post_source_type((string) ($post['source_type'] ?? 'post'));
+    $slugReadonly = $sourceType !== 'post' && $slug !== 'new' ? ' readonly' : '';
+    $languageTabs = render_admin_language_tabs(admin_post_language_targets($post, $site['language']), $site['language']);
+
     $body = '<section class="admin-card wide">
-    <p class="eyebrow">' . ($slug === 'new' ? 'Articol nou' : 'Editare articol') . '</p>
-    <h1>' . e($post['title'] ?: 'Articol nou') . '</h1>
+    <div class="admin-title-row">
+      <div>
+        <p class="eyebrow">' . ($slug === 'new' ? 'Articol nou' : 'Editare articol') . '</p>
+        <h1>' . e($post['title'] ?: 'Articol nou') . '</h1>
+        <p class="admin-muted">' . e(admin_post_type_label($sourceType)) . ' · ' . e(admin_language_label($site['language'])) . '</p>
+      </div>
+      ' . $languageTabs . '
+    </div>
     ' . ($message ? '<p class="form-message error">' . e($message) . '</p>' : '') . '
     <form class="admin-form" action="/admin/posts/' . e($slug) . '?lang=' . e($site['language']) . '" method="post">
       <input type="hidden" name="lang" value="' . e($site['language']) . '">
       <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
-      <label>Slug <input name="slug" value="' . e($post['slug']) . '" placeholder="titlu-articol"></label>
+      <input type="hidden" name="source_type" value="' . e($sourceType) . '">
+      <label>Slug <input name="slug" value="' . e($post['slug']) . '" placeholder="titlu-articol"' . $slugReadonly . '></label>
       <label>Titlu <input name="title" value="' . e($post['title']) . '" required></label>
       <label>Data <input name="date" type="date" value="' . e($post['date']) . '" required></label>
       <label>Rezumat <textarea name="excerpt" rows="3">' . e($post['excerpt']) . '</textarea></label>
@@ -569,8 +808,11 @@ function save_page(array $site, string $key): void
     $baseKeys = ['path', 'title', 'summary', 'body', 'ctaLabel', 'ctaHref', 'secondaryCtaLabel', 'secondaryCtaHref'];
     $extra = array_diff_key($page, array_flip($baseKeys));
 
-    $stmt = db()->prepare('UPDATE pages SET title = ?, summary = ?, body = ?, cta_label = ?, cta_href = ?, secondary_cta_label = ?, secondary_cta_href = ?, extra_json = ?, updated_at = CURRENT_TIMESTAMP WHERE language_code = ? AND page_key = ?');
+    $stmt = db()->prepare('INSERT INTO pages (language_code, page_key, path, title, summary, body, cta_label, cta_href, secondary_cta_label, secondary_cta_href, extra_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE path = VALUES(path), title = VALUES(title), summary = VALUES(summary), body = VALUES(body), cta_label = VALUES(cta_label), cta_href = VALUES(cta_href), secondary_cta_label = VALUES(secondary_cta_label), secondary_cta_href = VALUES(secondary_cta_href), extra_json = VALUES(extra_json), updated_at = CURRENT_TIMESTAMP');
     $stmt->execute([
+        $site['language'],
+        $key,
+        $page['path'] ?? '/',
         $page['title'],
         $page['summary'],
         $page['body'],
@@ -579,8 +821,6 @@ function save_page(array $site, string $key): void
         $page['secondaryCtaLabel'] ?? null,
         $page['secondaryCtaHref'] ?? null,
         json_encode($extra, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-        $site['language'],
-        $key,
     ]);
 }
 
@@ -609,7 +849,7 @@ function save_post(array $site, array $admin, string $originalSlug): string
         $slug = 'articol-' . date('YmdHis');
     }
     $existing = null;
-    $sourceType = 'post';
+    $sourceType = admin_normalize_post_source_type((string) ($_POST['source_type'] ?? 'post'));
     if ($originalSlug !== 'new') {
         $stmt = db()->prepare('SELECT source_type, path FROM posts WHERE language_code = ? AND slug = ? LIMIT 1');
         $stmt->execute([$language, $originalSlug]);
@@ -626,6 +866,7 @@ function save_post(array $site, array $admin, string $originalSlug): string
     }
     $post = [
         'slug' => $slug,
+        'source_type' => $sourceType,
         'title' => $title,
         'date' => $_POST['date'] ?? date('Y-m-d'),
         'excerpt' => $_POST['excerpt'] ?: plain_text((string) ($_POST['body'] ?? '')),
@@ -642,9 +883,9 @@ function save_post(array $site, array $admin, string $originalSlug): string
 
     if ($originalSlug === 'new') {
         $stmt = db()->prepare('INSERT INTO posts (language_code, source_type, slug, path, source_url, title, post_date, excerpt, body, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$language, 'post', $post['slug'], '/blog/' . $post['slug'], null, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'] ? 1 : 0]);
+        $stmt->execute([$language, $sourceType, $post['slug'], localized_post_path_values($language, $sourceType, $post['slug']), null, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'] ? 1 : 0]);
     } else {
-        $path = $sourceType === 'post' ? '/blog/' . $post['slug'] : ($existing['path'] ?? '');
+        $path = localized_post_path_values($language, $sourceType, $post['slug'], (string) ($existing['path'] ?? ''));
         $stmt = db()->prepare('UPDATE posts SET slug = ?, path = ?, title = ?, post_date = ?, excerpt = ?, body = ?, published = ?, updated_at = CURRENT_TIMESTAMP WHERE language_code = ? AND source_type = ? AND slug = ?');
         $stmt->execute([$post['slug'], $path, $post['title'], $post['date'], $post['excerpt'], $post['body'], $post['published'] ? 1 : 0, $language, $sourceType, $originalSlug]);
     }
@@ -661,4 +902,226 @@ function update_contact_message_status(int $id): void
 
     $stmt = db()->prepare('UPDATE contact_messages SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     $stmt->execute([$status, $id]);
+}
+
+function admin_validate_username(string $username): ?string
+{
+    if (strlen($username) < 3 || strlen($username) > 120) {
+        return 'Utilizatorul trebuie să aibă între 3 și 120 de caractere.';
+    }
+
+    if (!preg_match('/\A[a-zA-Z0-9._@-]+\z/', $username)) {
+        return 'Utilizatorul poate conține doar litere, cifre, punct, underscore, cratimă sau @.';
+    }
+
+    return null;
+}
+
+function admin_validate_password(string $password, bool $required): ?string
+{
+    if ($password === '' && !$required) {
+        return null;
+    }
+
+    if (strlen($password) < 12) {
+        return 'Parola trebuie să aibă cel puțin 12 caractere.';
+    }
+
+    return null;
+}
+
+function admin_user_flash_message(): string
+{
+    return [
+        'created' => 'Utilizatorul a fost creat.',
+        'updated' => 'Utilizatorul a fost actualizat.',
+        'deleted' => 'Utilizatorul a fost șters.',
+    ][(string) ($_GET['ok'] ?? '')] ?? '';
+}
+
+function render_admin_users(array $site, array $admin, string $message = '', string $messageType = 'success'): string
+{
+    $stmt = db()->query('SELECT id, username, created_at, updated_at FROM admin_users ORDER BY username ASC');
+    $users = $stmt->fetchAll();
+    $message = $message ?: admin_user_flash_message();
+
+    $rows = '';
+    foreach ($users as $user) {
+        $id = (int) $user['id'];
+        $isCurrent = $id === (int) ($admin['id'] ?? 0);
+        $deleteControl = $isCurrent
+            ? '<span class="admin-muted">cont curent</span>'
+            : '<form action="/admin/users/' . e((string) $id) . '?lang=' . e($site['language']) . '" method="post">
+                <input type="hidden" name="lang" value="' . e($site['language']) . '">
+                <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+                <input type="hidden" name="action" value="delete">
+                <button class="button button-danger" type="submit">Șterge</button>
+              </form>';
+
+        $rows .= '<tr>
+          <td><strong>' . e($user['username']) . '</strong>' . ($isCurrent ? '<br><small>autentificat acum</small>' : '') . '</td>
+          <td><small>Creat: ' . e($user['created_at']) . '<br>Actualizat: ' . e($user['updated_at']) . '</small></td>
+          <td>
+            <form class="admin-inline-form" action="/admin/users/' . e((string) $id) . '?lang=' . e($site['language']) . '" method="post">
+              <input type="hidden" name="lang" value="' . e($site['language']) . '">
+              <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+              <input type="hidden" name="action" value="update">
+              <label>Utilizator <input name="username" value="' . e($user['username']) . '" required></label>
+              <label>Parolă nouă <input name="password" type="password" autocomplete="new-password" placeholder="lasă gol pentru neschimbat"></label>
+              <button class="button button-secondary" type="submit">Salvează</button>
+            </form>
+          </td>
+          <td>' . $deleteControl . '</td>
+        </tr>';
+    }
+
+    $body = '<section class="admin-card wide">
+      <div class="admin-title-row">
+        <div>
+          <p class="eyebrow">Sistem</p>
+          <h1>Utilizatori admin</h1>
+          <p class="admin-muted">Creează conturi noi, schimbă numele sau resetează parola unui utilizator existent.</p>
+        </div>
+      </div>
+      ' . ($message ? '<p class="form-message ' . e($messageType) . '">' . e($message) . '</p>' : '') . '
+      <section class="admin-subsection first">
+        <h2>Utilizator nou</h2>
+        <form class="admin-form admin-create-user-form" action="/admin/users?lang=' . e($site['language']) . '" method="post">
+          <input type="hidden" name="lang" value="' . e($site['language']) . '">
+          <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+          <input type="hidden" name="action" value="create">
+          <label>Utilizator <input name="username" autocomplete="username" required></label>
+          <label>Parolă <input name="password" type="password" autocomplete="new-password" required></label>
+          <label>Confirmare parolă <input name="password_confirm" type="password" autocomplete="new-password" required></label>
+          <button class="button" type="submit">Creează utilizator</button>
+        </form>
+      </section>
+      <section class="admin-subsection">
+        <h2>Conturi existente</h2>
+        <div class="table-wrap">
+          <table class="admin-table admin-compact-table">
+            <thead><tr><th>Utilizator</th><th>Istoric</th><th>Editare rapidă</th><th></th></tr></thead>
+            <tbody>' . ($rows ?: '<tr><td colspan="4">Nu există utilizatori.</td></tr>') . '</tbody>
+          </table>
+        </div>
+      </section>
+    </section>';
+
+    return admin_layout($site, $admin, $body, 'Utilizatori admin');
+}
+
+function fail_admin_user_request(array $site, array $admin, string $message): never
+{
+    http_response_code(422);
+    echo render_admin_users($site, $admin, $message, 'error');
+    exit;
+}
+
+function redirect_admin_users(string $language, string $ok): never
+{
+    redirect('/admin/users?lang=' . rawurlencode($language) . '&ok=' . rawurlencode($ok));
+}
+
+function admin_user_duplicate_error(PDOException $error): bool
+{
+    return (string) $error->getCode() === '23000';
+}
+
+function create_admin_user_from_post(array $site, array $admin): never
+{
+    $username = trim((string) ($_POST['username'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
+
+    $error = admin_validate_username($username) ?: admin_validate_password($password, true);
+    if ($error !== null) {
+        fail_admin_user_request($site, $admin, $error);
+    }
+
+    if (!hash_equals($password, $passwordConfirm)) {
+        fail_admin_user_request($site, $admin, 'Confirmarea parolei nu corespunde.');
+    }
+
+    try {
+        $stmt = db()->prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)');
+        $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT)]);
+    } catch (PDOException $error) {
+        if (!admin_user_duplicate_error($error)) {
+            throw $error;
+        }
+        fail_admin_user_request($site, $admin, 'Există deja un utilizator cu acest nume.');
+    }
+
+    redirect_admin_users($site['language'], 'created');
+}
+
+function update_admin_user_from_post(array $site, array $admin, int $id): never
+{
+    $stmt = db()->prepare('SELECT id FROM admin_users WHERE id = ?');
+    $stmt->execute([$id]);
+    if (!$stmt->fetch()) {
+        fail_admin_user_request($site, $admin, 'Utilizatorul nu există.');
+    }
+
+    $username = trim((string) ($_POST['username'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    $error = admin_validate_username($username) ?: admin_validate_password($password, false);
+    if ($error !== null) {
+        fail_admin_user_request($site, $admin, $error);
+    }
+
+    try {
+        if ($password !== '') {
+            $stmt = db()->prepare('UPDATE admin_users SET username = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT), $id]);
+        } else {
+            $stmt = db()->prepare('UPDATE admin_users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $stmt->execute([$username, $id]);
+        }
+    } catch (PDOException $error) {
+        if (!admin_user_duplicate_error($error)) {
+            throw $error;
+        }
+        fail_admin_user_request($site, $admin, 'Există deja un utilizator cu acest nume.');
+    }
+
+    redirect_admin_users($site['language'], 'updated');
+}
+
+function delete_admin_user_from_post(array $site, array $admin, int $id): never
+{
+    if ($id === (int) ($admin['id'] ?? 0)) {
+        fail_admin_user_request($site, $admin, 'Nu poți șterge utilizatorul cu care ești autentificat.');
+    }
+
+    if (admin_user_count() <= 1) {
+        fail_admin_user_request($site, $admin, 'Trebuie să rămână cel puțin un utilizator admin.');
+    }
+
+    $stmt = db()->prepare('DELETE FROM admin_users WHERE id = ?');
+    $stmt->execute([$id]);
+    if ($stmt->rowCount() === 0) {
+        fail_admin_user_request($site, $admin, 'Utilizatorul nu există.');
+    }
+
+    redirect_admin_users($site['language'], 'deleted');
+}
+
+function handle_admin_user_post(array $site, array $admin, ?int $id = null): never
+{
+    $action = (string) ($_POST['action'] ?? ($id === null ? 'create' : 'update'));
+
+    if ($action === 'create' && $id === null) {
+        create_admin_user_from_post($site, $admin);
+    }
+
+    if ($id !== null && $action === 'update') {
+        update_admin_user_from_post($site, $admin, $id);
+    }
+
+    if ($id !== null && $action === 'delete') {
+        delete_admin_user_from_post($site, $admin, $id);
+    }
+
+    fail_admin_user_request($site, $admin, 'Acțiunea cerută nu este validă.');
 }

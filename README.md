@@ -39,6 +39,11 @@ cp config/config.example.php config/config.php
 4. Edit `config/config.php` with the database credentials.
    Also set a long random `app.form_secret`; it signs public contact form tokens and IP hashes.
    To enable Google reCAPTCHA v3, add the site key and secret key in the `recaptcha` config block and set `enabled` to `true`.
+   Content SQL updates are applied automatically on the first web request after
+   upload, including on cPanel/shared hosting. The app tracks the checksums in
+   the `content_update_runs` table and skips unchanged files. Set
+   `app.auto_apply_content_updates` to `false` if you want to run updates only
+   manually with `php scripts/apply-content-updates.php`.
 5. Point Apache document root to the `public/` directory when the hosting panel allows it. If not, upload the whole project and keep the root `.htaccess` file.
 6. Create the admin user:
 
@@ -57,6 +62,13 @@ Start the local stack:
 ```sh
 docker compose up --build
 ```
+
+On every app container start, Docker automatically applies changed content SQL
+layers (`content-overrides.sql`, `ifn-trust-content.sql`,
+`multilingual-content-fixes.sql`, and `anaf-consent.sql`) to the existing local
+database. Each file is tracked by checksum, so unchanged files are skipped on
+later restarts. Set `LOCALCAPITAL_AUTO_APPLY_CONTENT=0` to disable this, or
+`LOCALCAPITAL_FORCE_CONTENT_UPDATES=1` to reapply the tracked files.
 
 Open:
 

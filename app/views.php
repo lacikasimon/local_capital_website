@@ -121,12 +121,24 @@ function render_preload_links(array $images): string
 
 function home_hero_webp_srcset(): string
 {
-    return '/assets/hero-family-768.webp 768w, /assets/hero-family-1100.webp 1100w, /assets/hero-family-1600.webp 1600w, /assets/hero-family-2300.webp 2300w';
+    return implode(', ', [
+        versioned_asset_path('/assets/hero-family-480.webp') . ' 480w',
+        versioned_asset_path('/assets/hero-family-640.webp') . ' 640w',
+        versioned_asset_path('/assets/hero-family-768.webp') . ' 768w',
+        versioned_asset_path('/assets/hero-family-1100.webp') . ' 1100w',
+        versioned_asset_path('/assets/hero-family-1600.webp') . ' 1600w',
+        versioned_asset_path('/assets/hero-family-2300.webp') . ' 2300w',
+    ]);
 }
 
 function logo_webp_srcset(): string
 {
     return '/assets/logo-96.webp 96w, /assets/logo-192.webp 192w';
+}
+
+function versioned_asset_path(string $path): string
+{
+    return $path . '?v=' . rawurlencode(asset_version($path));
 }
 
 function ui_text(array $site, string $key): string
@@ -1380,7 +1392,7 @@ function render_home(array $site): string
         'canonicalPath' => '/',
         'preloadImages' => [
             [
-                'href' => '/assets/hero-family-1100.webp',
+                'href' => versioned_asset_path('/assets/hero-family-1100.webp'),
                 'type' => 'image/webp',
                 'imagesrcset' => $heroSrcset,
                 'imagesizes' => '100vw',
