@@ -3,6 +3,12 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  RewriteCond %{REQUEST_METHOD} !^(GET|POST|HEAD)$ [NC]
+  RewriteRule ^ - [R=405,L]
+  RewriteCond %{REQUEST_URI} !^/(robots\.txt|llms\.txt|sitemap\.xml)$ [NC]
+  RewriteCond %{HTTP_USER_AGENT} "(GPTBot|ChatGPT-User|Google-Extended|ClaudeBot|Claude-User|Claude-SearchBot|PerplexityBot|Perplexity-User|Meta-ExternalAgent|Meta-ExternalFetcher|Amazonbot|Applebot-Extended|Apple-Extended|Bytespider|DeepSeekBot|CCBot)" [NC]
+  RewriteRule ^ - [F,L]
+
   RewriteRule ^(\.git|app|config|database|scripts|docker)(/|$) - [F,L]
   RewriteRule ^(Dockerfile|docker-compose\.yml|README\.md|\.dockerignore|\.gitignore)$ - [F,L]
 
@@ -13,4 +19,24 @@ Options -Indexes
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ public/index.php [L]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+  <LimitExcept GET POST HEAD>
+    Require all denied
+  </LimitExcept>
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header unset X-Powered-By
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), microphone=(), midi=(), payment=(), usb=(), interest-cohort=()"
+  Header set Cross-Origin-Opener-Policy "same-origin"
+  Header set Cross-Origin-Resource-Policy "same-origin"
+  Header set Origin-Agent-Cluster "?1"
+  Header set X-Permitted-Cross-Domain-Policies "none"
+  Header set X-Robots-Tag "noai, noimageai"
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>

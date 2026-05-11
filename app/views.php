@@ -16,7 +16,10 @@ function public_layout(array $site, string $body, array $options = []): string
     $privacyUrl = absolute_url(localized_path('/politica-privind-datele-personale', $language));
     $termsUrl = absolute_url(localized_path('/termene-si-conditii', $language));
     $image = absolute_url($options['image'] ?? '/assets/hero-family.png');
-    $robots = $options['robots'] ?? 'index,follow';
+    $robots = (string) ($options['robots'] ?? 'index,follow');
+    if (!str_contains($robots, 'noai')) {
+        $robots .= ',noai,noimageai';
+    }
     $aiSummary = seo_description((string) ($options['aiSummary'] ?? $description));
     $alternateLinks = '';
     foreach (SUPPORTED_LANGUAGES as $code) {
@@ -1564,11 +1567,31 @@ function render_robots_txt(): string
         . "Disallow: /config/\n"
         . "Disallow: /database/\n"
         . "Disallow: /scripts/\n";
-    $aiBots = ['GPTBot', 'ChatGPT-User', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'];
+    $aiBlockRules = "Allow: /robots.txt\n"
+        . "Allow: /llms.txt\n"
+        . "Disallow: /\n";
+    $aiBots = [
+        'GPTBot',
+        'ChatGPT-User',
+        'Google-Extended',
+        'ClaudeBot',
+        'Claude-User',
+        'Claude-SearchBot',
+        'PerplexityBot',
+        'Perplexity-User',
+        'Meta-ExternalAgent',
+        'Meta-ExternalFetcher',
+        'Amazonbot',
+        'Applebot-Extended',
+        'Apple-Extended',
+        'Bytespider',
+        'DeepSeekBot',
+        'CCBot',
+    ];
     $robots = "User-agent: *\n" . $privateRules . "\n";
 
     foreach ($aiBots as $bot) {
-        $robots .= "User-agent: " . $bot . "\n" . $privateRules . "\n";
+        $robots .= "User-agent: " . $bot . "\n" . $aiBlockRules . "\n";
     }
 
     return $robots

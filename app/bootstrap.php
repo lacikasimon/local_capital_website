@@ -167,19 +167,35 @@ function send_security_headers(): void
         $csp[] = 'upgrade-insecure-requests';
     }
 
+    $origin = app_origin_url();
+
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header('Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), microphone=(), midi=(), payment=(), usb=(), interest-cohort=()');
     header('Cross-Origin-Opener-Policy: same-origin');
     header('Cross-Origin-Resource-Policy: same-origin');
     header('Origin-Agent-Cluster: ?1');
     header('X-Permitted-Cross-Domain-Policies: none');
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin', false);
+    header('X-Robots-Tag: noai, noimageai');
     header('Content-Security-Policy: ' . implode('; ', $csp));
 
     if ($secure) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     }
+}
+
+function app_origin_url(): string
+{
+    $baseUrl = app_base_url();
+    $parts = parse_url($baseUrl);
+    $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
+    $host = strtolower((string) ($parts['host'] ?? 'localhost'));
+    $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+
+    return $scheme . '://' . $host . $port;
 }
 
 function request_looks_malicious(string $value): bool
@@ -221,11 +237,58 @@ function enforce_request_hardening(): void
     }
 
     $path = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $requestPath = parse_url($path, PHP_URL_PATH) ?: '/';
+    if (request_user_agent_is_blocked((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), $requestPath)) {
+        http_response_code(403);
+        exit;
+    }
+
     $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
     if (request_looks_malicious($path . "\n" . $query)) {
         http_response_code(403);
         exit;
     }
+}
+
+function blocked_scraper_user_agents(): array
+{
+    return [
+        'amazonbot',
+        'anthropic-ai',
+        'applebot-extended',
+        'bytespider',
+        'ccbot',
+        'chatgpt-user',
+        'claude-searchbot',
+        'claude-user',
+        'claudebot',
+        'deepseekbot',
+        'facebookbot',
+        'google-extended',
+        'gptbot',
+        'meta-externalagent',
+        'meta-externalfetcher',
+        'omgili',
+        'perplexity-user',
+        'perplexitybot',
+    ];
+}
+
+function request_user_agent_is_blocked(string $userAgent, string $path): bool
+{
+    $path = normalize_route_path($path);
+    if (in_array($path, ['/robots.txt', '/llms.txt', '/sitemap.xml'], true)) {
+        return false;
+    }
+
+    $userAgent = strtolower($userAgent);
+    foreach (blocked_scraper_user_agents() as $blocked) {
+        if ($blocked !== '' && str_contains($userAgent, $blocked)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function e($value): string
@@ -750,6 +813,44 @@ function localized_page_routes(): array
     ];
 }
 
+function localized_page_aliases(): array
+{
+    return [
+        'ro' => [
+            'privacy' => [
+                '/privacy',
+                '/privacy-policy',
+                '/politica-de-confidentialitate',
+                '/politica-confidentialitate',
+                '/protectia-datelor',
+                '/cookies',
+                '/cookie-policy',
+            ],
+        ],
+        'en' => [
+            'privacy' => [
+                '/privacy',
+                '/privacy-policy',
+                '/personal-data-policy',
+                '/data-protection',
+                '/cookies',
+                '/cookie-policy',
+            ],
+        ],
+        'hu' => [
+            'privacy' => [
+                '/privacy',
+                '/privacy-policy',
+                '/adatvedelem',
+                '/adatkezeles',
+                '/adatkezelesi-tajekoztato',
+                '/cookies',
+                '/cookie-policy',
+            ],
+        ],
+    ];
+}
+
 function blog_index_routes(): array
 {
     return [
@@ -861,11 +962,22 @@ function route_page_key_for_path(string $language, string $path): ?string
     $language = normalize_language($language);
     $path = normalize_route_path($path);
     $routes = localized_page_routes();
+    $aliases = localized_page_aliases();
 
     foreach ([$routes[$language] ?? [], $routes[DEFAULT_LANGUAGE]] as $allowedRoutes) {
         foreach ($allowedRoutes as $key => $routePath) {
             if (normalize_route_path($routePath) === $path) {
                 return $key;
+            }
+        }
+    }
+
+    foreach ([$aliases[$language] ?? [], $aliases[DEFAULT_LANGUAGE] ?? []] as $allowedAliases) {
+        foreach ($allowedAliases as $key => $routePaths) {
+            foreach ((array) $routePaths as $routePath) {
+                if (normalize_route_path($routePath) === $path) {
+                    return $key;
+                }
             }
         }
     }
