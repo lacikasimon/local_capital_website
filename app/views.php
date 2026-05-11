@@ -761,7 +761,7 @@ function render_recaptcha_script(): string
     $siteKey = recaptcha_site_key();
     $siteKeyJs = json_encode($siteKey, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
 
-    return '<script src="https://www.google.com/recaptcha/api.js?render=' . e(rawurlencode($siteKey)) . '" async defer></script>
+    return '<script nonce="' . e(csp_nonce()) . '" src="https://www.google.com/recaptcha/api.js?render=' . e(rawurlencode($siteKey)) . '" async defer></script>
 <script nonce="' . e(csp_nonce()) . '">
 (() => {
   const siteKey = ' . ($siteKeyJs ?: '""') . ';

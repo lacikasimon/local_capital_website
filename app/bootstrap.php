@@ -151,7 +151,7 @@ function send_security_headers(): void
     $recaptchaEnabled = request_needs_recaptcha_assets();
     $csp = [
         "default-src 'self'",
-        "script-src 'nonce-" . $nonce . "'" . ($recaptchaEnabled ? " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/" : ''),
+        "script-src 'unsafe-inline' 'nonce-" . $nonce . "'" . ($recaptchaEnabled ? " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/" : ''),
         "style-src 'self'" . ($recaptchaEnabled ? " 'unsafe-inline'" : ''),
         "img-src 'self' data:",
         "font-src 'self'",
@@ -163,6 +163,10 @@ function send_security_headers(): void
         "base-uri 'none'",
         "frame-ancestors 'none'",
     ];
+    if (!$recaptchaEnabled) {
+        $csp[] = "require-trusted-types-for 'script'";
+        $csp[] = "trusted-types default";
+    }
     if ($secure) {
         $csp[] = 'upgrade-insecure-requests';
     }
