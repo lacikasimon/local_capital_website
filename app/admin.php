@@ -2,6 +2,69 @@
 
 declare(strict_types=1);
 
+function admin_url(string $path, string $language): string
+{
+    return $path . '?lang=' . rawurlencode($language);
+}
+
+function admin_current_path(): string
+{
+    $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/admin'), PHP_URL_PATH);
+    return is_string($path) && $path !== '' ? $path : '/admin';
+}
+
+function admin_count_badge(int $count): string
+{
+    return $count > 0 ? '<span class="admin-menu-badge">' . e((string) $count) . '</span>' : '';
+}
+
+function admin_sidebar_menu(array $site, string $currentPath): string
+{
+    $language = $site['language'] ?? DEFAULT_LANGUAGE;
+    $messageCount = function_exists('unread_contact_message_count') ? unread_contact_message_count() : 0;
+    $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
+    $postCount = count($site['posts'] ?? []);
+    $pageCount = count($site['pages'] ?? []);
+
+    $groups = [
+        'Principal' => [
+            ['label' => 'Panou', 'href' => admin_url('/admin', $language), 'match' => ['/admin'], 'exact' => true],
+        ],
+        'Conținut' => [
+            ['label' => 'Pagini', 'href' => admin_url('/admin', $language) . '#admin-pages', 'match' => ['/admin/pages'], 'badge' => $pageCount],
+            ['label' => 'Articole', 'href' => admin_url('/admin/posts/new', $language), 'match' => ['/admin/posts'], 'badge' => $postCount],
+            ['label' => 'Setări site', 'href' => admin_url('/admin/settings', $language), 'match' => ['/admin/settings']],
+        ],
+        'Operațional' => [
+            ['label' => 'Acorduri ANAF', 'href' => admin_url('/admin/anaf-consents', $language), 'match' => ['/admin/anaf-consents'], 'badge' => $anafCount, 'strong' => true],
+            ['label' => 'Mesaje contact', 'href' => admin_url('/admin/messages', $language), 'match' => ['/admin/messages'], 'badge' => $messageCount],
+        ],
+        'Instrumente' => [
+            ['label' => 'Inventar linkuri', 'href' => admin_url('/admin/links', $language), 'match' => ['/admin/links']],
+            ['label' => 'Site public', 'href' => localized_path('/', $language), 'match' => [], 'external' => true],
+        ],
+    ];
+
+    $html = '';
+    foreach ($groups as $groupLabel => $items) {
+        $html .= '<div class="admin-menu-section"><p>' . e($groupLabel) . '</p>';
+        foreach ($items as $item) {
+            $active = false;
+            foreach ($item['match'] as $matchPath) {
+                $active = !empty($item['exact']) ? $currentPath === $matchPath : str_starts_with($currentPath, $matchPath);
+                if ($active) {
+                    break;
+                }
+            }
+            $class = trim(($active ? 'active ' : '') . (!empty($item['strong']) ? 'important' : ''));
+            $html .= '<a' . ($class !== '' ? ' class="' . e($class) . '"' : '') . ' href="' . e($item['href']) . '"' . (!empty($item['external']) ? ' target="_blank" rel="noopener"' : '') . '><span>' . e($item['label']) . '</span>' . admin_count_badge((int) ($item['badge'] ?? 0)) . '</a>';
+        }
+        $html .= '</div>';
+    }
+
+    return $html;
+}
+
 function admin_layout(array $site, array $admin, string $body, string $title = 'Admin'): string
 {
     if (!headers_sent()) {
@@ -10,6 +73,8 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
 
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $cssVersion = asset_version('/styles.css');
+    $currentPath = admin_current_path();
+    $sidebarMenu = admin_sidebar_menu($site, $currentPath);
     $languageLinks = '';
     foreach (SUPPORTED_LANGUAGES as $code) {
         $class = $language === $code ? ' class="active"' : '';
@@ -26,22 +91,32 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
     <link rel="stylesheet" href="/styles.css?v=' . e($cssVersion) . '">
   </head>
   <body class="admin-body">
-    <header class="admin-header">
-      <a class="brand" href="/admin">
-        <img src="/assets/logo.png" alt="" width="44" height="40">
-        <span><strong>Admin</strong><small>' . e($site['settings']['brandName']) . '</small></span>
-      </a>
-      <nav>
-        <a href="/admin?lang=' . e($language) . '">Panou</a>
-        <a href="' . e(localized_path('/', $language)) . '">Site</a>
-        ' . $languageLinks . '
-        <form action="/admin/logout" method="post">
-          <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
-          <button type="submit">Ieșire</button>
-        </form>
-      </nav>
-    </header>
-    <main class="admin-main">' . $body . '</main>
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <a class="admin-brand" href="/admin?lang=' . e($language) . '">
+          <img src="/assets/logo.png" alt="" width="42" height="38">
+          <span><strong>Local Capital</strong><small>Admin panel</small></span>
+        </a>
+        <nav class="admin-menu" aria-label="Admin principal">' . $sidebarMenu . '</nav>
+      </aside>
+      <div class="admin-workspace">
+        <header class="admin-topbar">
+          <div class="admin-topbar-title">
+            <p>Administrare</p>
+            <h1>' . e($title) . '</h1>
+          </div>
+          <div class="admin-topbar-actions">
+            <div class="admin-language-switcher" aria-label="Limbi admin">' . $languageLinks . '</div>
+            <span class="admin-user">' . e($admin['username'] ?? 'admin') . '</span>
+            <form action="/admin/logout" method="post">
+              <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+              <button type="submit">Ieșire</button>
+            </form>
+          </div>
+        </header>
+        <main id="admin-content" class="admin-main">' . $body . '</main>
+      </div>
+    </div>
     ' . render_recaptcha_script() . '
   </body>
 </html>';
@@ -244,6 +319,13 @@ function render_admin_dashboard(array $site, array $admin): string
 {
     $messageCount = unread_contact_message_count();
     $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
+    $publishedPosts = 0;
+    foreach ($site['posts'] as $post) {
+        if (!empty($post['published'])) {
+            $publishedPosts++;
+        }
+    }
+
     $pages = '';
     foreach ($site['pages'] as $key => $page) {
         $pages .= '<li><a href="/admin/pages/' . e($key) . '?lang=' . e($site['language']) . '">' . e($page['title']) . '</a></li>';
@@ -254,23 +336,41 @@ function render_admin_dashboard(array $site, array $admin): string
         $posts .= '<li><a href="/admin/posts/' . e($post['slug']) . '?lang=' . e($site['language']) . '">' . e($post['title']) . '</a><span>' . ($post['published'] ? 'publicat' : 'draft') . '</span></li>';
     }
 
-    $body = '<section class="admin-grid">
-    <article class="admin-card">
-      <h1>Panou admin</h1>
-      <p>Editează textele site-ului, datele companiei și articolele publicate.</p>
-      <a class="button" href="/admin/settings?lang=' . e($site['language']) . '">Setări site</a>
-      <a class="button button-secondary" href="/admin/links?lang=' . e($site['language']) . '">Link inventory</a>
-      <a class="button button-secondary" href="/admin/messages?lang=' . e($site['language']) . '">Mesaje' . ($messageCount ? ' (' . $messageCount . ')' : '') . '</a>
-      <a class="button button-secondary" href="/admin/anaf-consents?lang=' . e($site['language']) . '">Acorduri ANAF' . ($anafCount ? ' (' . $anafCount . ')' : '') . '</a>
-    </article>
-    <article class="admin-card">
+    $body = '<section class="admin-hero-panel">
+    <div>
+      <p class="eyebrow">Bun venit</p>
+      <h2>Panou de administrare Local Capital</h2>
+      <p>Controlează conținutul site-ului, mesajele primite și acordurile ANAF dintr-un meniu clar, fără să cauți prin pagini ascunse.</p>
+    </div>
+    <div class="admin-quick-actions">
+      <a class="button" href="/admin/anaf-consents?lang=' . e($site['language']) . '">Acorduri ANAF</a>
+      <a class="button button-secondary" href="/admin/anaf-consents/new?lang=' . e($site['language']) . '">Generează link ANAF</a>
+      <a class="button button-secondary" href="/admin/settings?lang=' . e($site['language']) . '">Setări site</a>
+    </div>
+  </section>
+  <section class="admin-stat-grid" aria-label="Rezumat admin">
+    <a class="admin-stat" href="/admin?lang=' . e($site['language']) . '#admin-pages"><span>Pagini</span><strong>' . e((string) count($site['pages'])) . '</strong></a>
+    <a class="admin-stat" href="/admin/posts/new?lang=' . e($site['language']) . '"><span>Articole publicate</span><strong>' . e((string) $publishedPosts) . '</strong></a>
+    <a class="admin-stat" href="/admin/messages?lang=' . e($site['language']) . '"><span>Mesaje noi</span><strong>' . e((string) $messageCount) . '</strong></a>
+    <a class="admin-stat important" href="/admin/anaf-consents?lang=' . e($site['language']) . '"><span>Acorduri ANAF</span><strong>' . e((string) $anafCount) . '</strong></a>
+  </section>
+  <section class="admin-grid">
+    <article id="admin-pages" class="admin-card">
       <h2>Pagini</h2>
       <ul class="admin-list">' . $pages . '</ul>
     </article>
-    <article class="admin-card">
+    <article id="admin-posts" class="admin-card">
       <h2>Articole</h2>
       <ul class="admin-list">' . ($posts ?: '<li>Nu există articole.</li>') . '</ul>
       <a class="button button-secondary" href="/admin/posts/new?lang=' . e($site['language']) . '">Articol nou</a>
+    </article>
+    <article class="admin-card">
+      <h2>Flux operațional</h2>
+      <div class="admin-action-list">
+        <a href="/admin/anaf-consents?lang=' . e($site['language']) . '"><strong>Acorduri ANAF</strong><span>Generează linkuri precompletate, vezi acceptările și descarcă PDF-uri.</span></a>
+        <a href="/admin/messages?lang=' . e($site['language']) . '"><strong>Mesaje contact</strong><span>Verifică cererile noi trimise prin formularul public.</span></a>
+        <a href="/admin/links?lang=' . e($site['language']) . '"><strong>Inventar linkuri</strong><span>Controlează linkurile importate și resursele externe.</span></a>
+      </div>
     </article>
   </section>';
 
