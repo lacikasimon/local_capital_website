@@ -94,7 +94,7 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
     <div class="admin-shell">
       <aside class="admin-sidebar">
         <a class="admin-brand" href="/admin?lang=' . e($language) . '">
-          <img src="/assets/logo.png" alt="" width="42" height="38">
+          <img src="/assets/logo.png" srcset="' . e(logo_webp_srcset()) . '" sizes="42px" alt="" width="42" height="38">
           <span><strong>Local Capital</strong><small>Admin panel</small></span>
         </a>
         <nav class="admin-menu" aria-label="Admin principal">' . $sidebarMenu . '</nav>
@@ -117,7 +117,6 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
         <main id="admin-content" class="admin-main">' . $body . '</main>
       </div>
     </div>
-    ' . render_recaptcha_script() . '
   </body>
 </html>';
 }
@@ -137,7 +136,7 @@ function login_page(string $message = ''): string
   </head>
   <body class="login-page">
     <main class="login-panel">
-      <img src="/assets/logo.png" alt="Local Capital" width="78" height="70">
+      <img src="/assets/logo.png" srcset="' . e(logo_webp_srcset()) . '" sizes="78px" alt="Local Capital" width="78" height="70">
       <h1>Admin Local Capital</h1>
       ' . ($message ? '<p class="form-message">' . e($message) . '</p>' : '') . '
       <form action="/admin/login" method="post"' . recaptcha_form_attributes('admin_login') . '>

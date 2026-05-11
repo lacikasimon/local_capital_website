@@ -148,7 +148,7 @@ function send_security_headers(): void
 
     $nonce = csp_nonce();
     $secure = is_https_request();
-    $recaptchaEnabled = recaptcha_enabled();
+    $recaptchaEnabled = request_needs_recaptcha_assets();
     $csp = [
         "default-src 'self'",
         "script-src 'nonce-" . $nonce . "'" . ($recaptchaEnabled ? " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/" : ''),
@@ -183,8 +183,27 @@ function send_security_headers(): void
     header('Content-Security-Policy: ' . implode('; ', $csp));
 
     if ($secure) {
-        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
     }
+}
+
+function request_needs_recaptcha_assets(): bool
+{
+    if (!recaptcha_enabled()) {
+        return false;
+    }
+
+    $requestPath = normalize_route_path(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+    if ($requestPath === '/admin/login') {
+        return true;
+    }
+
+    [$language, $path] = detect_language_and_path();
+    if (route_page_key_for_path($language, $path) === 'contact') {
+        return true;
+    }
+
+    return $path === '/acord-anaf' || str_starts_with($path . '/', '/acord-anaf/');
 }
 
 function app_origin_url(): string

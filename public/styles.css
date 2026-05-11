@@ -289,13 +289,37 @@ nav a.active,
 }
 
 .home-hero {
-  background:
-    linear-gradient(90deg, rgba(16, 32, 20, 0.86), rgba(16, 32, 20, 0.48) 52%, rgba(16, 32, 20, 0.18)),
-    url("/assets/hero-family.png") center / cover no-repeat;
+  position: relative;
+  overflow: hidden;
+  background: var(--brand-ink);
   color: #ffffff;
 }
 
+.home-hero::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(90deg, rgba(16, 32, 20, 0.86), rgba(16, 32, 20, 0.48) 52%, rgba(16, 32, 20, 0.18));
+  content: "";
+  pointer-events: none;
+}
+
+.hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .hero-copy {
+  position: relative;
+  z-index: 1;
   max-width: 720px;
 }
 
@@ -1069,6 +1093,11 @@ html[data-a11y-contrast="true"] .cta-band,
 html[data-a11y-contrast="true"] .site-footer {
   background: #000000 !important;
   color: #ffffff;
+}
+
+html[data-a11y-contrast="true"] .hero-media,
+html[data-a11y-contrast="true"] .home-hero::after {
+  display: none;
 }
 
 html[data-a11y-contrast="true"] .text-card,

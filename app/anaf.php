@@ -485,6 +485,7 @@ function render_anaf_consent_form(array $site, ?array $record = null, array $err
         'robots' => 'noindex,nofollow',
         'alternateLanguages' => false,
         'showLanguageNav' => false,
+        'recaptcha' => true,
     ]);
 }
 

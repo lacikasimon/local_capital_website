@@ -7,6 +7,7 @@ function public_layout(array $site, string $body, array $options = []): string
     $settings = $site['settings'];
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $cssVersion = asset_version('/styles.css');
+    $preloadLinks = render_preload_links($options['preloadImages'] ?? []);
     $title = ($options['title'] ?? null)
         ? $options['title'] . ' | ' . $settings['brandName']
         : $settings['brandName'] . ' | ' . $settings['tagline'];
@@ -62,7 +63,7 @@ function public_layout(array $site, string $body, array $options = []): string
     <meta name="twitter:description" content="' . e($description) . '">
     <meta name="twitter:image" content="' . e($image) . '">
     <link rel="alternate" type="text/plain" title="LLMs.txt" href="' . e(absolute_url('/llms.txt')) . '">
-    <link rel="icon" href="/assets/logo.png">
+    <link rel="icon" href="/assets/favicon.png" type="image/png">' . $preloadLinks . '
     <link rel="stylesheet" href="/styles.css?v=' . e($cssVersion) . '">
     <script type="application/ld+json" nonce="' . e(csp_nonce()) . '">' . str_replace('</', '<\/', $structuredData ?: '{}') . '</script>
   </head>
@@ -73,12 +74,59 @@ function public_layout(array $site, string $body, array $options = []): string
     ' . render_footer($site) . '
     ' . render_accessibility_tools($site) . '
     ' . render_cookie_consent($site) . '
-    ' . render_recaptcha_script() . '
+    ' . (!empty($options['recaptcha']) ? render_recaptcha_script() : '') . '
     ' . render_mobile_menu_script() . '
     ' . render_accessibility_script($site) . '
     ' . render_cookie_consent_script() . '
   </body>
 </html>';
+}
+
+function render_preload_links(array $images): string
+{
+    if (!$images) {
+        return '';
+    }
+
+    if (!array_is_list($images)) {
+        $images = [$images];
+    }
+
+    $html = '';
+    foreach ($images as $image) {
+        if (!is_array($image) || empty($image['href'])) {
+            continue;
+        }
+
+        $attributes = [
+            'rel' => 'preload',
+            'as' => 'image',
+            'href' => (string) $image['href'],
+        ];
+        foreach (['type', 'imagesrcset', 'imagesizes', 'fetchpriority'] as $key) {
+            if (!empty($image[$key])) {
+                $attributes[$key] = (string) $image[$key];
+            }
+        }
+
+        $parts = [];
+        foreach ($attributes as $name => $value) {
+            $parts[] = $name . '="' . e($value) . '"';
+        }
+        $html .= "\n    <link " . implode(' ', $parts) . '>';
+    }
+
+    return $html;
+}
+
+function home_hero_webp_srcset(): string
+{
+    return '/assets/hero-family-768.webp 768w, /assets/hero-family-1100.webp 1100w, /assets/hero-family-1600.webp 1600w, /assets/hero-family-2300.webp 2300w';
+}
+
+function logo_webp_srcset(): string
+{
+    return '/assets/logo-96.webp 96w, /assets/logo-192.webp 192w';
 }
 
 function ui_text(array $site, string $key): string
@@ -648,7 +696,7 @@ function render_header(array $site, string $active, string $currentPath = '/', b
 
     return '<header class="site-header">
     <a class="brand" href="' . e(localized_path('/', $language)) . '" aria-label="' . e($settings['brandName']) . '">
-      <img src="/assets/logo.png" alt="" width="52" height="46">
+      <img src="/assets/logo.png" srcset="' . e(logo_webp_srcset()) . '" sizes="52px" alt="" width="52" height="46">
       <span>
         <strong>' . e($settings['brandName']) . '</strong>
         <small>' . e($settings['tagline']) . '</small>
@@ -1015,7 +1063,7 @@ function render_footer(array $site): string
     return '<footer class="site-footer">
     <div class="footer-grid">
       <section>
-        <img src="/assets/logo.png" alt="' . e($settings['brandName']) . '" width="68" height="61">
+        <img src="/assets/logo.png" srcset="' . e(logo_webp_srcset()) . '" sizes="68px" alt="' . e($settings['brandName']) . '" width="68" height="61" loading="lazy" decoding="async">
         <p>' . e($settings['footerText']) . '</p>
         ' . render_footer_legal_lines($site) . '
       </section>
@@ -1041,13 +1089,13 @@ function render_footer(array $site): string
         <p><a href="/downloads/politica-de-retentie-a-datelor-cu-caracter-personal.pdf">' . e(ui_text($site, 'footer_retention')) . '</a></p>
         <div class="footer-regulatory-logos" aria-label="' . e(ui_text($site, 'footer_regulatory_logos')) . '">
           <a href="' . e($settings['anpcUrl']) . '" target="_blank" rel="nofollow noopener" aria-label="ANPC">
-            <img src="/assets/anpc.webp" alt="ANPC" loading="lazy" decoding="async">
+            <img src="/assets/anpc.webp" alt="ANPC" width="370" height="97" loading="lazy" decoding="async">
           </a>
           <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="nofollow noopener" aria-label="' . e(ui_text($site, 'footer_sal_label')) . '">
-            <img src="/assets/anpc-sal.svg" alt="' . e(ui_text($site, 'footer_sal_label')) . '" loading="lazy" decoding="async">
+            <img src="/assets/anpc-sal.svg" alt="' . e(ui_text($site, 'footer_sal_label')) . '" width="165" height="41" loading="lazy" decoding="async">
           </a>
           <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener" aria-label="' . e(ui_text($site, 'footer_sol_label')) . '">
-            <img src="/assets/anpc-sol.svg" alt="' . e(ui_text($site, 'footer_sol_label')) . '" loading="lazy" decoding="async">
+            <img src="/assets/anpc-sol.svg" alt="' . e(ui_text($site, 'footer_sol_label')) . '" width="165" height="41" loading="lazy" decoding="async">
           </a>
         </div>
       </section>
@@ -1253,7 +1301,7 @@ function render_home(array $site): string
 
     foreach ($page['services'] ?? [] as $service) {
         $services .= '<article class="service-card">
-        <img src="' . e($service['image'] ?? '') . '" alt="">
+        <img src="' . e($service['image'] ?? '') . '" alt="" width="600" height="400" loading="lazy" decoding="async">
         <div>
           <h3>' . e($service['title'] ?? '') . '</h3>
           <p>' . e($service['text'] ?? '') . '</p>
@@ -1265,7 +1313,12 @@ function render_home(array $site): string
         $trust .= '<div><strong>' . e($item['value']) . '</strong><span>' . e($item['label']) . '</span></div>';
     }
 
+    $heroSrcset = home_hero_webp_srcset();
     $body = '<section class="hero home-hero">
+    <picture class="hero-media" aria-hidden="true">
+      <source type="image/webp" srcset="' . e($heroSrcset) . '" sizes="100vw">
+      <img src="/assets/hero-family.png" alt="" width="2300" height="790" fetchpriority="high" decoding="async">
+    </picture>
     <div class="hero-copy">
       <p class="eyebrow">' . e($site['settings']['tagline']) . '</p>
       <h1>' . e($page['title']) . '</h1>
@@ -1325,6 +1378,15 @@ function render_home(array $site): string
         'aiSummary' => $page['aiSummary'] ?? $page['summary'],
         'faqItems' => $page['faq'] ?? [],
         'canonicalPath' => '/',
+        'preloadImages' => [
+            [
+                'href' => '/assets/hero-family-1100.webp',
+                'type' => 'image/webp',
+                'imagesrcset' => $heroSrcset,
+                'imagesizes' => '100vw',
+                'fetchpriority' => 'high',
+            ],
+        ],
     ]);
 }
 
@@ -1427,6 +1489,7 @@ function render_contact(array $site, array $errors = [], array $old = []): strin
         'faqItems' => $page['faq'] ?? [],
         'webPageType' => 'ContactPage',
         'canonicalPath' => route_page_path('contact', $site['language']) ?? '/contact',
+        'recaptcha' => true,
     ]);
 }
 
