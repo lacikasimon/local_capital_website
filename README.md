@@ -36,6 +36,7 @@ cp config/config.example.php config/config.php
 
 4. Edit `config/config.php` with the database credentials.
    Also set a long random `app.form_secret`; it signs public contact form tokens and IP hashes.
+   To enable Google reCAPTCHA v3, add the site key and secret key in the `recaptcha` config block and set `enabled` to `true`.
 5. Point Apache document root to the `public/` directory when the hosting panel allows it. If not, upload the whole project and keep the root `.htaccess` file.
 6. Create the admin user:
 
@@ -123,6 +124,34 @@ Contact messages can be reviewed from `/admin/messages?lang=ro`, `/admin/message
 - Admin passwords use PHP `password_hash`.
 - Admin sessions use HttpOnly cookies.
 - Admin writes use CSRF tokens.
-- The public contact form uses a signed time-limited token, honeypot field, and IP-hash rate limiting before storing messages.
+- Admin login uses IP-hash failure tracking, temporary application-level bans, and fail2ban-friendly PHP error log lines.
+- The public contact form uses a signed time-limited token, honeypot field, IP-hash rate limiting, and optional Google reCAPTCHA v3 verification before storing messages.
+- Google reCAPTCHA v3 can be enabled site-wide through `config/config.php`:
+
+```php
+'recaptcha' => [
+    'enabled' => true,
+    'site_key' => 'GOOGLE_RECAPTCHA_V3_SITE_KEY',
+    'secret_key' => 'GOOGLE_RECAPTCHA_V3_SECRET_KEY',
+    'min_score' => 0.5,
+    'actions' => [
+        'page_view' => 0.0,
+        'contact' => 0.5,
+        'admin_login' => 0.7,
+    ],
+],
+```
+
+- Admin login ban thresholds can be tuned in `config/config.php`:
+
+```php
+'security' => [
+    'admin_login_max_failures' => 5,
+    'admin_login_window_minutes' => 15,
+    'admin_login_ban_minutes' => 30,
+],
+```
+
+- On cPanel shared hosting, the application-level ban works without server access. On a VPS/root server, fail2ban can also watch PHP error logs with a filter matching `LOCALCAPITAL_FAIL2BAN event=admin-login-failure ip=<HOST>`.
 - Security headers are sent by PHP and partially mirrored in `public/.htaccess`.
 - Keep `config/config.php` outside git and back up the MySQL database.

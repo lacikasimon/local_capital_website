@@ -117,6 +117,17 @@ CREATE TABLE IF NOT EXISTS admin_login_attempts (
   KEY idx_admin_login_attempt_time (attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS admin_login_bans (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  ip_hash CHAR(64) NOT NULL,
+  banned_until DATETIME NOT NULL,
+  reason VARCHAR(120) NOT NULL DEFAULT 'admin_login',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_admin_login_ban_ip (ip_hash),
+  KEY idx_admin_login_banned_until (banned_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO settings (language_code, setting_key, setting_value) VALUES
 ('ro', 'brandName', 'Local Capital'),
 ('ro', 'legalName', 'LOCAL CAPITAL IFN S.A.'),

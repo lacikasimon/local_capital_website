@@ -6,6 +6,7 @@ function public_layout(array $site, string $body, array $options = []): string
 {
     $settings = $site['settings'];
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
+    $cssVersion = asset_version('/styles.css');
     $title = ($options['title'] ?? null)
         ? $options['title'] . ' | ' . $settings['brandName']
         : $settings['brandName'] . ' | ' . $settings['tagline'];
@@ -57,7 +58,7 @@ function public_layout(array $site, string $body, array $options = []): string
     <meta name="twitter:image" content="' . e($image) . '">
     <link rel="alternate" type="text/plain" title="LLMs.txt" href="' . e(absolute_url('/llms.txt')) . '">
     <link rel="icon" href="/assets/logo.png">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=' . e($cssVersion) . '">
     <script type="application/ld+json" nonce="' . e(csp_nonce()) . '">' . str_replace('</', '<\/', $structuredData ?: '{}') . '</script>
   </head>
   <body>
@@ -67,6 +68,7 @@ function public_layout(array $site, string $body, array $options = []): string
     ' . render_footer($site) . '
     ' . render_accessibility_tools($site) . '
     ' . render_cookie_consent($site) . '
+    ' . render_recaptcha_script() . '
     ' . render_mobile_menu_script() . '
     ' . render_accessibility_script($site) . '
     ' . render_cookie_consent_script() . '
@@ -639,14 +641,113 @@ function render_mobile_menu_script(): string
 </script>';
 }
 
+function render_recaptcha_field(string $action): string
+{
+    if (!recaptcha_enabled()) {
+        return '';
+    }
+
+    return '<input type="hidden" name="recaptcha_token" value="" data-recaptcha-token>
+        <input type="hidden" name="recaptcha_action" value="' . e($action) . '">';
+}
+
+function recaptcha_form_attributes(string $action): string
+{
+    if (!recaptcha_enabled()) {
+        return '';
+    }
+
+    return ' data-recaptcha-form data-recaptcha-action="' . e($action) . '"';
+}
+
+function render_recaptcha_script(): string
+{
+    if (!recaptcha_enabled()) {
+        return '';
+    }
+
+    $siteKey = recaptcha_site_key();
+    $siteKeyJs = json_encode($siteKey, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+    return '<script src="https://www.google.com/recaptcha/api.js?render=' . e(rawurlencode($siteKey)) . '" async defer></script>
+<script nonce="' . e(csp_nonce()) . '">
+(() => {
+  const siteKey = ' . ($siteKeyJs ?: '""') . ';
+  const executeRecaptcha = (action) => new Promise((resolve, reject) => {
+    if (!window.grecaptcha || !window.grecaptcha.ready) {
+      reject(new Error("recaptcha-unavailable"));
+      return;
+    }
+    window.grecaptcha.ready(() => {
+      window.grecaptcha.execute(siteKey, { action }).then(resolve).catch(reject);
+    });
+  });
+
+  window.addEventListener("load", () => {
+    executeRecaptcha("page_view").catch(() => {});
+  });
+
+  document.querySelectorAll("form[data-recaptcha-form]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.recaptchaReady === "true") {
+        form.dataset.recaptchaReady = "false";
+        return;
+      }
+
+      event.preventDefault();
+      const action = form.dataset.recaptchaAction || "page_view";
+      const tokenField = form.querySelector("[data-recaptcha-token]");
+      const submitButton = form.querySelector("button[type=submit], input[type=submit]");
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
+      executeRecaptcha(action)
+        .then((token) => {
+          if (tokenField) {
+            tokenField.value = token;
+          }
+          form.dataset.recaptchaReady = "true";
+          if (form.requestSubmit) {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        })
+        .catch(() => {
+          form.dataset.recaptchaReady = "true";
+          if (form.requestSubmit) {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        })
+        .finally(() => {
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
+        });
+    });
+  });
+})();
+</script>';
+}
+
 function render_accessibility_tools(array $site): string
 {
     $panelId = 'accessibility-panel';
 
     return '<div class="accessibility-tools" data-a11y-tools>
-    <button class="accessibility-toggle" type="button" aria-expanded="false" aria-controls="' . e($panelId) . '" data-a11y-toggle>
-      <span aria-hidden="true">Aa</span>
-      <span>' . e(ui_text($site, 'a11y_button')) . '</span>
+    <button class="accessibility-toggle" type="button" aria-label="' . e(ui_text($site, 'a11y_button')) . '" aria-expanded="false" aria-controls="' . e($panelId) . '" data-a11y-toggle>
+      <span class="accessibility-icon-wrap" aria-hidden="true">
+        <svg class="accessibility-icon" viewBox="0 0 24 24" focusable="false">
+          <circle cx="12" cy="4.8" r="2.1"></circle>
+          <path d="M4.8 9.1h14.4"></path>
+          <path d="M12 7.5v5.6"></path>
+          <path d="M8.4 21l3.6-7.9L15.6 21"></path>
+        </svg>
+      </span>
+      <span class="accessibility-toggle-label">' . e(ui_text($site, 'a11y_button')) . '</span>
     </button>
     <aside class="accessibility-panel" id="' . e($panelId) . '" aria-labelledby="accessibility-title" hidden>
       <div class="accessibility-panel-header">
@@ -1249,8 +1350,9 @@ function render_contact(array $site, array $errors = [], array $old = []): strin
     <div class="contact-panel">
       <h2>' . e($page['formTitle'] ?? ui_text($site, 'contact_form_title')) . '</h2>
       ' . $message . '
-      <form action="' . e(localized_path('/contact', $site['language'])) . '" method="post">
+      <form action="' . e(localized_path('/contact', $site['language'])) . '" method="post"' . recaptcha_form_attributes('contact') . '>
         <input type="hidden" name="contact_token" value="' . e(contact_form_token()) . '">
+        ' . render_recaptcha_field('contact') . '
         <label class="hidden-field">' . e(ui_text($site, 'contact_honeypot')) . ' <input name="website" tabindex="-1" autocomplete="off"></label>
         <label>' . e(ui_text($site, 'contact_name')) . ' <input name="name" autocomplete="name" maxlength="160" value="' . e($old['name'] ?? '') . '" required></label>
         <label>' . e(ui_text($site, 'contact_email')) . ' <input name="email" type="email" autocomplete="email" maxlength="190" value="' . e($old['email'] ?? '') . '" required></label>

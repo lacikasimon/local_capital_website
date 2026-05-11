@@ -15,4 +15,20 @@ return [
         'form_secret' => 'change-this-random-form-secret',
         'debug' => false,
     ],
+    'security' => [
+        'admin_login_max_failures' => 5,
+        'admin_login_window_minutes' => 15,
+        'admin_login_ban_minutes' => 30,
+    ],
+    'recaptcha' => [
+        'enabled' => false,
+        'site_key' => '',
+        'secret_key' => '',
+        'min_score' => 0.5,
+        'actions' => [
+            'page_view' => 0.0,
+            'contact' => 0.5,
+            'admin_login' => 0.7,
+        ],
+    ],
 ];

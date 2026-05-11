@@ -63,6 +63,16 @@ function app_config(): array
     return $config;
 }
 
+function asset_version(string $path): string
+{
+    $file = ROOT_DIR . '/public/' . ltrim($path, '/');
+    if (is_file($file)) {
+        return (string) filemtime($file);
+    }
+
+    return '1';
+}
+
 function is_https_request(): bool
 {
     $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
@@ -138,14 +148,15 @@ function send_security_headers(): void
 
     $nonce = csp_nonce();
     $secure = is_https_request();
+    $recaptchaEnabled = recaptcha_enabled();
     $csp = [
         "default-src 'self'",
-        "script-src 'nonce-" . $nonce . "'",
-        "style-src 'self'",
+        "script-src 'nonce-" . $nonce . "'" . ($recaptchaEnabled ? " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/" : ''),
+        "style-src 'self'" . ($recaptchaEnabled ? " 'unsafe-inline'" : ''),
         "img-src 'self' data:",
         "font-src 'self'",
-        "connect-src 'self'",
-        "frame-src 'none'",
+        "connect-src 'self'" . ($recaptchaEnabled ? " https://www.google.com/recaptcha/" : ''),
+        "frame-src " . ($recaptchaEnabled ? "'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/" : "'none'"),
         "manifest-src 'self'",
         "object-src 'none'",
         "form-action 'self'",
@@ -357,8 +368,134 @@ function verify_contact_form_token(string $token): bool
 
 function client_ip_hash(): string
 {
+    return hash_hmac('sha256', client_ip(), form_secret());
+}
+
+function client_ip(): string
+{
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-    return hash_hmac('sha256', $ip, form_secret());
+    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : 'unknown';
+}
+
+function security_policy(string $key, int $default): int
+{
+    $config = app_config()['security'] ?? [];
+    $value = (int) ($config[$key] ?? $default);
+    return max(1, $value);
+}
+
+function recaptcha_config(): array
+{
+    $config = app_config()['recaptcha'] ?? [];
+    return is_array($config) ? $config : [];
+}
+
+function recaptcha_enabled(): bool
+{
+    $config = recaptcha_config();
+    return !empty($config['enabled'])
+        && trim((string) ($config['site_key'] ?? '')) !== ''
+        && trim((string) ($config['secret_key'] ?? '')) !== '';
+}
+
+function recaptcha_site_key(): string
+{
+    return (string) (recaptcha_config()['site_key'] ?? '');
+}
+
+function recaptcha_action_score(string $action): float
+{
+    $config = recaptcha_config();
+    $actions = is_array($config['actions'] ?? null) ? $config['actions'] : [];
+    return (float) ($actions[$action] ?? ($config['min_score'] ?? 0.5));
+}
+
+function recaptcha_verify(string $action, ?string $token = null): array
+{
+    if (!recaptcha_enabled()) {
+        return ['ok' => true, 'score' => 1.0, 'disabled' => true];
+    }
+
+    $token = trim((string) ($token ?? ($_POST['recaptcha_token'] ?? '')));
+    if ($token === '') {
+        return ['ok' => false, 'reason' => 'missing-token', 'score' => 0.0];
+    }
+
+    $config = recaptcha_config();
+    $body = http_build_query([
+        'secret' => (string) ($config['secret_key'] ?? ''),
+        'response' => $token,
+        'remoteip' => client_ip(),
+    ]);
+    $response = recaptcha_post_verify($body);
+    if (!is_array($response)) {
+        return ['ok' => false, 'reason' => 'verify-unavailable', 'score' => 0.0];
+    }
+
+    $score = (float) ($response['score'] ?? 0.0);
+    $expectedScore = recaptcha_action_score($action);
+    $verifiedAction = (string) ($response['action'] ?? '');
+    $success = !empty($response['success']);
+
+    if (!$success || $verifiedAction !== $action || $score < $expectedScore) {
+        return [
+            'ok' => false,
+            'reason' => !$success ? 'failed' : ($verifiedAction !== $action ? 'action-mismatch' : 'low-score'),
+            'score' => $score,
+            'action' => $verifiedAction,
+        ];
+    }
+
+    return ['ok' => true, 'score' => $score, 'action' => $verifiedAction];
+}
+
+function recaptcha_post_verify(string $body): ?array
+{
+    $url = 'https://www.google.com/recaptcha/api/siteverify';
+    $raw = null;
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+        if ($curl) {
+            curl_setopt_array($curl, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 5,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+            ]);
+            $raw = curl_exec($curl);
+            curl_close($curl);
+        }
+    }
+
+    if ($raw === null || $raw === false) {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content' => $body,
+                'timeout' => 5,
+            ],
+        ]);
+        $raw = @file_get_contents($url, false, $context);
+    }
+
+    if (!is_string($raw) || $raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+function recaptcha_error_text(string $language): string
+{
+    return [
+        'ro' => 'Verificarea reCAPTCHA nu a reușit. Reîncarcă pagina și încearcă din nou.',
+        'en' => 'The reCAPTCHA verification failed. Reload the page and try again.',
+        'hu' => 'A reCAPTCHA ellenőrzés nem sikerült. Töltsd újra az oldalt és próbáld meg újra.',
+    ][normalize_language($language)] ?? 'The reCAPTCHA verification failed.';
 }
 
 function clean_form_text(string $value, int $limit): string
@@ -427,6 +564,11 @@ function save_contact_message(string $language, array $input): array
 
     if (trim((string) ($input['website'] ?? '')) !== '') {
         $errors[] = contact_error_text($language, 'spam');
+    }
+
+    $recaptcha = recaptcha_verify('contact', (string) ($input['recaptcha_token'] ?? ''));
+    if (empty($recaptcha['ok'])) {
+        $errors[] = recaptcha_error_text($language);
     }
 
     $name = clean_form_text((string) ($input['name'] ?? ''), 160);

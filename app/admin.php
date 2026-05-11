@@ -5,6 +5,7 @@ declare(strict_types=1);
 function admin_layout(array $site, array $admin, string $body, string $title = 'Admin'): string
 {
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
+    $cssVersion = asset_version('/styles.css');
     $languageLinks = '';
     foreach (SUPPORTED_LANGUAGES as $code) {
         $class = $language === $code ? ' class="active"' : '';
@@ -18,7 +19,7 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>' . e($title) . ' | ' . e($site['settings']['brandName']) . '</title>
     <meta name="robots" content="noindex,nofollow">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=' . e($cssVersion) . '">
   </head>
   <body class="admin-body">
     <header class="admin-header">
@@ -37,12 +38,15 @@ function admin_layout(array $site, array $admin, string $body, string $title = '
       </nav>
     </header>
     <main class="admin-main">' . $body . '</main>
+    ' . render_recaptcha_script() . '
   </body>
 </html>';
 }
 
 function login_page(string $message = ''): string
 {
+    $cssVersion = asset_version('/styles.css');
+
     return '<!doctype html>
 <html lang="ro">
   <head>
@@ -50,19 +54,21 @@ function login_page(string $message = ''): string
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin login | Local Capital</title>
     <meta name="robots" content="noindex,nofollow">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=' . e($cssVersion) . '">
   </head>
   <body class="login-page">
     <main class="login-panel">
       <img src="/assets/logo.png" alt="Local Capital" width="78" height="70">
       <h1>Admin Local Capital</h1>
       ' . ($message ? '<p class="form-message">' . e($message) . '</p>' : '') . '
-      <form action="/admin/login" method="post">
+      <form action="/admin/login" method="post"' . recaptcha_form_attributes('admin_login') . '>
+        ' . render_recaptcha_field('admin_login') . '
         <label>Utilizator <input name="username" autocomplete="username" required></label>
         <label>Parolă <input name="password" type="password" autocomplete="current-password" required></label>
         <button class="button" type="submit">Autentificare</button>
       </form>
     </main>
+    ' . render_recaptcha_script() . '
   </body>
 </html>';
 }
@@ -86,6 +92,17 @@ function ensure_admin_login_attempts_table(): void
         KEY idx_admin_login_attempt_time (attempted_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 
+    db()->exec('CREATE TABLE IF NOT EXISTS admin_login_bans (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        ip_hash CHAR(64) NOT NULL,
+        banned_until DATETIME NOT NULL,
+        reason VARCHAR(120) NOT NULL DEFAULT \'admin_login\',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uniq_admin_login_ban_ip (ip_hash),
+        KEY idx_admin_login_banned_until (banned_until)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
     $ready = true;
 }
 
@@ -99,16 +116,64 @@ function admin_username_hash(string $username): string
     return hash_hmac('sha256', strtolower(trim($username)), form_secret());
 }
 
+function admin_login_banned_until(): ?string
+{
+    ensure_admin_login_attempts_table();
+
+    db()->exec('DELETE FROM admin_login_bans WHERE banned_until <= NOW()');
+
+    $stmt = db()->prepare('SELECT banned_until FROM admin_login_bans WHERE ip_hash = ? AND banned_until > NOW() LIMIT 1');
+    $stmt->execute([client_ip_hash()]);
+    $bannedUntil = $stmt->fetchColumn();
+
+    return is_string($bannedUntil) && $bannedUntil !== '' ? $bannedUntil : null;
+}
+
+function admin_login_failure_count(string $username): int
+{
+    ensure_admin_login_attempts_table();
+
+    $windowMinutes = security_policy('admin_login_window_minutes', 15);
+    $stmt = db()->prepare('SELECT COUNT(*) FROM admin_login_attempts WHERE (attempt_key = ? OR ip_hash = ?) AND attempted_at > DATE_SUB(NOW(), INTERVAL ' . $windowMinutes . ' MINUTE)');
+    $stmt->execute([admin_login_attempt_key($username), client_ip_hash()]);
+
+    return (int) $stmt->fetchColumn();
+}
+
 function admin_login_rate_limited(string $username): bool
 {
     ensure_admin_login_attempts_table();
 
     db()->exec('DELETE FROM admin_login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 DAY)');
 
-    $stmt = db()->prepare('SELECT COUNT(*) FROM admin_login_attempts WHERE (attempt_key = ? OR ip_hash = ?) AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
-    $stmt->execute([admin_login_attempt_key($username), client_ip_hash()]);
+    if (admin_login_banned_until() !== null) {
+        return true;
+    }
 
-    return (int) $stmt->fetchColumn() >= 8;
+    return admin_login_failure_count($username) >= security_policy('admin_login_max_failures', 5);
+}
+
+function admin_login_fail2ban_log(string $event, string $username = '', string $message = ''): void
+{
+    $event = preg_replace('/[^a-z0-9_-]/i', '', $event) ?: 'admin-login-event';
+    $message = preg_replace('/[\r\n]+/', ' ', $message);
+
+    error_log(sprintf(
+        'LOCALCAPITAL_FAIL2BAN event=%s ip=%s username_hash=%s message=%s',
+        $event,
+        client_ip(),
+        admin_username_hash($username),
+        trim($message)
+    ));
+}
+
+function ban_admin_login_ip(string $username): void
+{
+    $banMinutes = security_policy('admin_login_ban_minutes', 30);
+    $stmt = db()->prepare('INSERT INTO admin_login_bans (ip_hash, banned_until, reason) VALUES (?, DATE_ADD(NOW(), INTERVAL ' . $banMinutes . ' MINUTE), \'admin_login\') ON DUPLICATE KEY UPDATE banned_until = VALUES(banned_until), reason = VALUES(reason)');
+    $stmt->execute([client_ip_hash()]);
+
+    admin_login_fail2ban_log('admin-login-ban', $username, 'duration_minutes=' . $banMinutes);
 }
 
 function record_admin_login_failure(string $username): void
@@ -117,6 +182,12 @@ function record_admin_login_failure(string $username): void
 
     $stmt = db()->prepare('INSERT INTO admin_login_attempts (attempt_key, ip_hash, username_hash) VALUES (?, ?, ?)');
     $stmt->execute([admin_login_attempt_key($username), client_ip_hash(), admin_username_hash($username)]);
+
+    admin_login_fail2ban_log('admin-login-failure', $username);
+
+    if (admin_login_failure_count($username) >= security_policy('admin_login_max_failures', 5)) {
+        ban_admin_login_ip($username);
+    }
 }
 
 function clear_admin_login_failures(string $username): void
@@ -133,7 +204,17 @@ function handle_login_post(): void
 
     if (admin_login_rate_limited($username)) {
         http_response_code(429);
-        echo login_page('Prea multe încercări. Te rugăm să aștepți câteva minute.');
+        $bannedUntil = admin_login_banned_until();
+        admin_login_fail2ban_log('admin-login-blocked', $username, $bannedUntil ? 'banned_until=' . $bannedUntil : 'rate_limited=1');
+        echo login_page('Prea multe încercări. Accesul la autentificare este blocat temporar.');
+        return;
+    }
+
+    $recaptcha = recaptcha_verify('admin_login');
+    if (empty($recaptcha['ok'])) {
+        record_admin_login_failure($username);
+        http_response_code(403);
+        echo login_page('Verificarea de securitate nu a reușit. Reîncarcă pagina și încearcă din nou.');
         return;
     }
 

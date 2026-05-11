@@ -907,46 +907,83 @@ textarea:focus {
   position: fixed;
   right: clamp(14px, 3vw, 28px);
   bottom: clamp(14px, 3vw, 28px);
-  z-index: 75;
+  z-index: 95;
   display: grid;
   justify-items: end;
   gap: 10px;
   max-width: min(92vw, 420px);
+  pointer-events: none;
+}
+
+.accessibility-tools,
+.accessibility-tools * {
+  box-sizing: border-box;
 }
 
 .accessibility-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--brand-dark);
-  box-shadow: var(--shadow-strong);
+  justify-content: center;
+  gap: 11px;
+  min-width: 64px;
+  min-height: 64px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #123d22;
+  box-shadow: 0 18px 45px rgba(10, 30, 18, 0.26);
   color: #ffffff;
   cursor: pointer;
   font: inherit;
   font-weight: 850;
-  padding: 10px 14px;
+  padding: 9px 18px 9px 10px;
+  pointer-events: auto;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-.accessibility-toggle span[aria-hidden] {
+.accessibility-toggle:hover,
+.accessibility-toggle:focus-visible,
+.accessibility-toggle[aria-expanded="true"] {
+  background: #0d2d19;
+  box-shadow: 0 20px 52px rgba(10, 30, 18, 0.34);
+  transform: translateY(-1px);
+}
+
+.accessibility-icon-wrap {
   display: inline-grid;
   place-items: center;
-  min-width: 36px;
-  min-height: 30px;
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
   background: #ffffff;
   color: var(--brand-dark);
-  font-size: 1.05rem;
+}
+
+.accessibility-icon {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.accessibility-toggle-label {
+  max-width: 190px;
+  line-height: 1.18;
+  text-align: left;
 }
 
 .accessibility-panel {
+  order: -1;
   width: min(92vw, 410px);
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow-strong);
   padding: 18px;
+  pointer-events: auto;
 }
 
 .accessibility-panel[hidden] {
@@ -1551,7 +1588,13 @@ legend {
     grid-template-columns: 1fr;
   }
 
-  .accessibility-toggle span:not([aria-hidden]) {
+  .accessibility-toggle {
+    width: 64px;
+    height: 64px;
+    padding: 9px;
+  }
+
+  .accessibility-toggle-label {
     display: none;
   }
 }
