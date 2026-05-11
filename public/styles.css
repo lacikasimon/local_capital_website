@@ -8,6 +8,7 @@
   --brand-dark: #203d20;
   --brand-ink: #102014;
   --accent: #b8943f;
+  --accent-text: #8a5b00;
   --accent-soft: #f3ead6;
   --sky: #dcebf1;
   --field: #f7f8f5;
@@ -32,6 +33,7 @@ html[data-a11y-contrast="true"] {
   --brand: #004b1f;
   --brand-dark: #003314;
   --accent: #8a5b00;
+  --accent-text: #6f4700;
   --accent-soft: #fff1b8;
   --field: #ffffff;
   --shadow: none;
@@ -325,14 +327,16 @@ nav a.active,
 
 .eyebrow {
   margin: 0 0 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.home-hero .eyebrow {
+.home-hero .eyebrow,
+.page-hero .eyebrow,
+.cta-band .eyebrow {
   color: #f0c76b;
 }
 
