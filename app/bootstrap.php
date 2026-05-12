@@ -158,6 +158,29 @@ function content_update_force_enabled(): bool
     return (bool) (app_config()['app']['force_content_updates'] ?? false);
 }
 
+function content_update_lock_handle()
+{
+    $lock = @fopen(rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . '/localcapital-content-updates-' . md5(ROOT_DIR) . '.lock', 'c');
+    if ($lock === false) {
+        return null;
+    }
+
+    if (!flock($lock, LOCK_EX | LOCK_NB)) {
+        fclose($lock);
+        return null;
+    }
+
+    return $lock;
+}
+
+function release_content_update_lock($lock): void
+{
+    if (is_resource($lock)) {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
 function content_update_db(int $retries = 1, int $sleepSeconds = 1): PDO
 {
     $lastError = null;
@@ -189,6 +212,52 @@ function ensure_content_update_table(PDO $pdo): void
     );
 }
 
+function content_update_statuses(): array
+{
+    $pdo = content_update_db();
+    ensure_content_update_table($pdo);
+
+    $runs = [];
+    foreach ($pdo->query('SELECT update_key, checksum, applied_at FROM content_update_runs') as $row) {
+        $runs[(string) $row['update_key']] = [
+            'checksum' => (string) $row['checksum'],
+            'applied_at' => (string) $row['applied_at'],
+        ];
+    }
+
+    $statuses = [];
+    $applyRemaining = false;
+    foreach (content_update_files() as $file) {
+        $key = str_replace(ROOT_DIR . '/', '', $file);
+        $run = $runs[$key] ?? null;
+        $exists = is_file($file);
+        $checksum = $exists ? hash_file('sha256', $file) : null;
+        $status = 'missing';
+
+        if ($exists && (!$run || ($run['checksum'] ?? '') !== $checksum)) {
+            $status = 'pending';
+            $applyRemaining = true;
+        } elseif ($exists && $applyRemaining) {
+            $status = 'queued';
+        } elseif ($exists) {
+            $status = 'ran';
+        }
+
+        $statuses[] = [
+            'key' => $key,
+            'file' => basename($file),
+            'path' => $file,
+            'exists' => $exists,
+            'status' => $status,
+            'checksum' => $checksum,
+            'previous_checksum' => $run['checksum'] ?? null,
+            'applied_at' => $run['applied_at'] ?? null,
+        ];
+    }
+
+    return $statuses;
+}
+
 function apply_content_updates(bool $dryRun = false, bool $force = false, int $retries = 1, int $sleepSeconds = 1): array
 {
     $pdo = $dryRun ? null : content_update_db($retries, $sleepSeconds);
@@ -197,6 +266,8 @@ function apply_content_updates(bool $dryRun = false, bool $force = false, int $r
     }
 
     $results = [];
+    $pendingChecksumUpdates = [];
+    $applyRemaining = $force;
     foreach (content_update_files() as $file) {
         if (!is_file($file)) {
             $results[] = ['file' => basename($file), 'status' => 'missing'];
@@ -220,18 +291,39 @@ function apply_content_updates(bool $dryRun = false, bool $force = false, int $r
         $stmt->execute([$key]);
         $previousChecksum = $stmt->fetchColumn();
 
-        if (!$force && $previousChecksum === $checksum) {
+        if (!$applyRemaining && $previousChecksum === $checksum) {
             $results[] = ['file' => $key, 'status' => 'unchanged', 'checksum' => $checksum];
             continue;
         }
 
         $pdo->exec($sql);
-        $stmt = $pdo->prepare('INSERT INTO content_update_runs (update_key, checksum) VALUES (?, ?) ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), applied_at = CURRENT_TIMESTAMP');
-        $stmt->execute([$key, $checksum]);
+        $pendingChecksumUpdates[] = [$key, $checksum];
         $results[] = ['file' => $key, 'status' => 'applied', 'checksum' => $checksum];
+        $applyRemaining = true;
+    }
+
+    if ($pdo instanceof PDO && $pendingChecksumUpdates) {
+        $stmt = $pdo->prepare('INSERT INTO content_update_runs (update_key, checksum) VALUES (?, ?) ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), applied_at = CURRENT_TIMESTAMP');
+        foreach ($pendingChecksumUpdates as [$key, $checksum]) {
+            $stmt->execute([$key, $checksum]);
+        }
     }
 
     return $results;
+}
+
+function apply_content_updates_with_lock(bool $force = false, int $retries = 1, int $sleepSeconds = 1): array
+{
+    $lock = content_update_lock_handle();
+    if ($lock === null) {
+        throw new RuntimeException('Content updates are already running.');
+    }
+
+    try {
+        return apply_content_updates(false, $force, $retries, $sleepSeconds);
+    } finally {
+        release_content_update_lock($lock);
+    }
 }
 
 function apply_content_updates_for_request(): void
@@ -242,13 +334,17 @@ function apply_content_updates_for_request(): void
     }
     $done = true;
 
+    $lock = content_update_lock_handle();
+    if ($lock === null) {
+        return;
+    }
+
     try {
         apply_content_updates(false, content_update_force_enabled());
     } catch (Throwable $error) {
         error_log('LOCALCAPITAL_CONTENT_UPDATE_FAILED ' . $error->getMessage());
-        if (!empty(app_config()['app']['debug'])) {
-            throw $error;
-        }
+    } finally {
+        release_content_update_lock($lock);
     }
 }
 

@@ -10,7 +10,9 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $dryRun = in_array('--dry-run', $argv, true);
-$results = apply_content_updates($dryRun, content_update_force_enabled(), 30, 2);
+$results = $dryRun
+    ? apply_content_updates(true, content_update_force_enabled(), 30, 2)
+    : apply_content_updates_with_lock(content_update_force_enabled(), 30, 2);
 foreach ($results as $result) {
     $file = (string) $result['file'];
     $status = (string) $result['status'];

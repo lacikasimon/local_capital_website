@@ -1576,6 +1576,15 @@ html[data-a11y-contrast="true"] .accessibility-panel {
   gap: 10px;
 }
 
+.admin-quick-actions form {
+  margin: 0;
+}
+
+.admin-quick-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1760,6 +1769,50 @@ html[data-a11y-contrast="true"] .accessibility-panel {
 .status-archived {
   background: #f4ead8;
   color: #6b4d13;
+}
+
+.status-import-ran {
+  background: #e2f1e3;
+  color: #24522c;
+}
+
+.status-import-pending {
+  background: #fff1c7;
+  color: #6a520f;
+}
+
+.status-import-queued {
+  background: #e4f1f6;
+  color: #1d5267;
+}
+
+.status-import-missing {
+  background: #f6e7e3;
+  color: #7b3327;
+}
+
+.admin-import-table {
+  min-width: 980px;
+}
+
+.admin-import-result-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-import-result-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 6px;
+}
+
+.admin-import-result-list span {
+  font-weight: 800;
 }
 
 .status-draft {

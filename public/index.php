@@ -48,6 +48,10 @@ try {
                 handle_admin_user_post($site, $admin);
             }
 
+            if ($path === '/admin/imports') {
+                handle_admin_imports_post($site, $admin);
+            }
+
             if (preg_match('#^/admin/users/([0-9]+)$#', $path, $match)) {
                 handle_admin_user_post($site, $admin, (int) $match[1]);
             }
@@ -95,6 +99,11 @@ try {
 
         if ($path === '/admin/users') {
             echo render_admin_users($site, $admin);
+            exit;
+        }
+
+        if ($path === '/admin/imports') {
+            echo render_admin_imports($site, $admin);
             exit;
         }
 

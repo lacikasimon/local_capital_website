@@ -39,12 +39,29 @@ function admin_user_count(): int
     return (int) $stmt->fetchColumn();
 }
 
+function admin_import_pending_count(): int
+{
+    try {
+        $count = 0;
+        foreach (content_update_statuses() as $status) {
+            if (in_array($status['status'], ['pending', 'queued'], true)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    } catch (Throwable $error) {
+        return 0;
+    }
+}
+
 function admin_sidebar_menu(array $site, string $currentPath): string
 {
     $language = $site['language'] ?? DEFAULT_LANGUAGE;
     $messageCount = function_exists('unread_contact_message_count') ? unread_contact_message_count() : 0;
     $anafCount = function_exists('unread_anaf_consent_count') ? unread_anaf_consent_count() : 0;
     $adminUserCount = admin_user_count();
+    $importPendingCount = admin_import_pending_count();
     $postCount = count($site['posts'] ?? []);
     $pageCount = count($site['pages'] ?? []);
 
@@ -62,6 +79,7 @@ function admin_sidebar_menu(array $site, string $currentPath): string
             ['label' => 'Mesaje contact', 'href' => admin_url('/admin/messages', $language), 'match' => ['/admin/messages'], 'badge' => $messageCount],
         ],
         'Sistem' => [
+            ['label' => 'Importuri', 'href' => admin_url('/admin/imports', $language), 'match' => ['/admin/imports'], 'badge' => $importPendingCount],
             ['label' => 'Utilizatori', 'href' => admin_url('/admin/users', $language), 'match' => ['/admin/users'], 'badge' => $adminUserCount],
         ],
         'Instrumente' => [
@@ -396,14 +414,182 @@ function render_admin_dashboard(array $site, array $admin): string
         <a href="/admin/links?lang=' . e($site['language']) . '"><strong>Inventar linkuri</strong><span>Controlează linkurile importate și resursele externe.</span></a>
       </div>
     </article>
-    <article class="admin-card">
-      <h2>Sistem</h2>
-      <p class="admin-muted">Sunt ' . e((string) $adminUserCount) . ' utilizatori admin configurați.</p>
-      <a class="button button-secondary" href="/admin/users?lang=' . e($site['language']) . '">Gestionează utilizatori</a>
-    </article>
-  </section>';
+	    <article class="admin-card">
+	      <h2>Sistem</h2>
+	      <p class="admin-muted">Sunt ' . e((string) $adminUserCount) . ' utilizatori admin configurați.</p>
+	      <a class="button button-secondary" href="/admin/imports?lang=' . e($site['language']) . '">Importuri</a>
+	      <a class="button button-secondary" href="/admin/users?lang=' . e($site['language']) . '">Gestionează utilizatori</a>
+	    </article>
+	  </section>';
 
     return admin_layout($site, $admin, $body, 'Panou admin');
+}
+
+function admin_import_flash(): array
+{
+    $flash = $_SESSION['admin_import_flash'] ?? [];
+    unset($_SESSION['admin_import_flash']);
+    return is_array($flash) ? $flash : [];
+}
+
+function admin_import_status_label(string $status): string
+{
+    return [
+        'ran' => 'Rulat',
+        'pending' => 'Pending',
+        'queued' => 'Va rula',
+        'missing' => 'Lipsește',
+    ][$status] ?? label_from_key($status);
+}
+
+function admin_import_status_note(string $status): string
+{
+    return [
+        'ran' => 'Checksum identic cu ultima rulare.',
+        'pending' => 'Fișier nou sau modificat.',
+        'queued' => 'Se rulează după un import anterior modificat.',
+        'missing' => 'Fișierul nu există pe disc.',
+    ][$status] ?? '';
+}
+
+function admin_short_checksum(?string $checksum): string
+{
+    return $checksum ? substr($checksum, 0, 12) : '-';
+}
+
+function render_admin_import_result_rows(array $results): string
+{
+    if (!$results) {
+        return '';
+    }
+
+    $items = '';
+    foreach ($results as $result) {
+        $items .= '<li><strong>' . e((string) ($result['file'] ?? 'import')) . '</strong><span>' . e(label_from_key((string) ($result['status'] ?? 'unknown'))) . '</span></li>';
+    }
+
+    return '<ul class="admin-import-result-list">' . $items . '</ul>';
+}
+
+function render_admin_imports(array $site, array $admin): string
+{
+    try {
+        $statuses = content_update_statuses();
+        $loadError = '';
+    } catch (Throwable $error) {
+        $statuses = [];
+        $loadError = $error->getMessage();
+    }
+
+    $flash = admin_import_flash();
+    $pendingCount = 0;
+    $ranCount = 0;
+    $missingCount = 0;
+    $rows = '';
+
+    foreach ($statuses as $status) {
+        $state = (string) ($status['status'] ?? 'missing');
+        if (in_array($state, ['pending', 'queued'], true)) {
+            $pendingCount++;
+        } elseif ($state === 'ran') {
+            $ranCount++;
+        } elseif ($state === 'missing') {
+            $missingCount++;
+        }
+
+        $currentChecksum = is_string($status['checksum'] ?? null) ? $status['checksum'] : null;
+        $previousChecksum = is_string($status['previous_checksum'] ?? null) ? $status['previous_checksum'] : null;
+        $rows .= '<tr>
+          <td><strong>' . e((string) ($status['file'] ?? 'import')) . '</strong><br><small>' . e((string) ($status['key'] ?? '')) . '</small></td>
+          <td><span class="status-pill status-import-' . e($state) . '">' . e(admin_import_status_label($state)) . '</span><br><small>' . e(admin_import_status_note($state)) . '</small></td>
+          <td><small>Actual: ' . e(admin_short_checksum($currentChecksum)) . '<br>Înregistrat: ' . e(admin_short_checksum($previousChecksum)) . '</small></td>
+          <td>' . e((string) ($status['applied_at'] ?? '-')) . '</td>
+        </tr>';
+    }
+
+    $message = '';
+    if ($loadError !== '') {
+        $message = '<p class="form-message error">Importurile nu pot fi citite: ' . e($loadError) . '</p>';
+    } elseif ($flash) {
+        $type = (string) ($flash['type'] ?? 'success');
+        $message = '<div class="form-message ' . e($type) . '"><p>' . e((string) ($flash['message'] ?? '')) . '</p>' . render_admin_import_result_rows(is_array($flash['results'] ?? null) ? $flash['results'] : []) . '</div>';
+    }
+
+    $runDisabled = $pendingCount === 0 || $loadError !== '' ? ' disabled' : '';
+    $forceDisabled = $loadError !== '' ? ' disabled' : '';
+    $body = '<section class="admin-overview">
+    <div>
+      <p class="eyebrow">Sistem</p>
+      <h2>Importuri și migrații de conținut</h2>
+      <p>Rulează fișierele SQL urmărite în ordinea lor, similar cu un sistem de migration. Checksumurile sunt salvate după rulare, iar importurile modificate apar ca pending.</p>
+    </div>
+    <div class="admin-quick-actions">
+      <form action="/admin/imports?lang=' . e($site['language']) . '" method="post">
+        <input type="hidden" name="lang" value="' . e($site['language']) . '">
+        <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+        <input type="hidden" name="action" value="run_pending">
+        <button class="button" type="submit"' . $runDisabled . '>Rulează pending</button>
+      </form>
+      <form action="/admin/imports?lang=' . e($site['language']) . '" method="post">
+        <input type="hidden" name="lang" value="' . e($site['language']) . '">
+        <input type="hidden" name="csrf" value="' . e(csrf_token()) . '">
+        <input type="hidden" name="action" value="force_all">
+        <button class="button button-secondary" type="submit"' . $forceDisabled . '>Rulează tot din nou</button>
+      </form>
+    </div>
+  </section>
+  <section class="admin-stat-grid admin-import-stat-grid" aria-label="Rezumat importuri">
+    <div class="admin-stat"><span>Pending</span><strong>' . e((string) $pendingCount) . '</strong></div>
+    <div class="admin-stat"><span>Rulate</span><strong>' . e((string) $ranCount) . '</strong></div>
+    <div class="admin-stat"><span>Lipsă</span><strong>' . e((string) $missingCount) . '</strong></div>
+    <div class="admin-stat"><span>Total</span><strong>' . e((string) count($statuses)) . '</strong></div>
+  </section>
+  <section class="admin-card wide">
+    <div class="admin-title-row">
+      <div>
+        <p class="eyebrow">Migration log</p>
+        <h1>Status importuri</h1>
+        <p class="admin-muted">Dacă un import din mijloc este modificat, importurile de după el sunt marcate „Va rula”, ca să refacă stratul final de conținut.</p>
+      </div>
+    </div>
+    ' . $message . '
+    <div class="table-wrap">
+      <table class="admin-table admin-import-table">
+        <thead><tr><th>Import</th><th>Status</th><th>Checksum</th><th>Ultima rulare</th></tr></thead>
+        <tbody>' . ($rows ?: '<tr><td colspan="4">Nu există importuri configurate.</td></tr>') . '</tbody>
+      </table>
+    </div>
+  </section>';
+
+    return admin_layout($site, $admin, $body, 'Importuri');
+}
+
+function handle_admin_imports_post(array $site, array $admin): never
+{
+    $action = (string) ($_POST['action'] ?? 'run_pending');
+    $force = $action === 'force_all';
+
+    try {
+        $results = apply_content_updates_with_lock($force, 30, 2);
+        $applied = count(array_filter($results, static fn (array $result): bool => ($result['status'] ?? '') === 'applied'));
+        $unchanged = count(array_filter($results, static fn (array $result): bool => ($result['status'] ?? '') === 'unchanged'));
+        $_SESSION['admin_import_flash'] = [
+            'type' => 'success',
+            'message' => $force
+                ? 'Toate importurile au fost rulate din nou.'
+                : 'Importurile pending au fost rulate.',
+            'results' => $results,
+            'summary' => compact('applied', 'unchanged'),
+        ];
+    } catch (Throwable $error) {
+        $_SESSION['admin_import_flash'] = [
+            'type' => 'error',
+            'message' => 'Importurile nu au putut fi rulate: ' . $error->getMessage(),
+            'results' => [],
+        ];
+    }
+
+    redirect('/admin/imports?lang=' . rawurlencode($site['language']));
 }
 
 function admin_post_type_label(string $sourceType): string
