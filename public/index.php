@@ -163,6 +163,20 @@ try {
 
     $site = load_site($language);
 
+    if (preg_match('#^' . preg_quote(ANAF_PUBLIC_PATH, '#') . '/pdf/([1-9][0-9]*-[1-9][0-9]*-[a-f0-9]{64})$#', $path, $match)) {
+        if ($language !== DEFAULT_LANGUAGE) {
+            redirect(ANAF_PUBLIC_PATH . '/pdf/' . $match[1]);
+        }
+        if ($method !== 'GET') {
+            http_response_code(405);
+            echo render_error_page(error_page_text($language, 'method_title'), error_page_text($language, 'method_message'), $language);
+            exit;
+        }
+
+        output_public_anaf_consent_pdf($match[1]);
+        exit;
+    }
+
     $anafToken = anaf_public_route_token($path);
     if ($anafToken !== null) {
         if ($language !== DEFAULT_LANGUAGE) {
@@ -184,7 +198,8 @@ try {
         if ($method === 'POST') {
             $result = save_anaf_consent_submission($record, $_POST);
             if ($result['ok']) {
-                redirect(ANAF_PUBLIC_PATH . '?sent=1');
+                $downloadToken = (string) ($result['download_token'] ?? '');
+                redirect(ANAF_PUBLIC_PATH . '?sent=1' . ($downloadToken !== '' ? '&pdf=' . rawurlencode($downloadToken) : ''));
             }
 
             http_response_code(422);
@@ -198,7 +213,7 @@ try {
             exit;
         }
 
-        echo render_anaf_consent_form($site, $record, [], ['public_token' => $anafToken], ($_GET['sent'] ?? '') === '1');
+        echo render_anaf_consent_form($site, $record, [], ['public_token' => $anafToken], ($_GET['sent'] ?? '') === '1', (string) ($_GET['pdf'] ?? ''));
         exit;
     }
 

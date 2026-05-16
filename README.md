@@ -5,7 +5,7 @@ Apache + PHP + MySQL mini-CMS for replacing the current WordPress site.
 ## Server requirements
 
 - Apache with `mod_rewrite`
-- PHP 8.1+ with `pdo_mysql`
+- PHP 8.1+ with `pdo_mysql` and `gd`
 - MySQL or MariaDB with `utf8mb4`
 - HTTPS enabled in production
 
@@ -157,7 +157,7 @@ Contact messages can be reviewed from `/admin/messages?lang=ro`, `/admin/message
 ],
 ```
 
-- The Romanian ANAF agreement form at `/acord-anaf` uses the same signed token, honeypot, rate limiting, optional reCAPTCHA v3, encrypted storage, one-time public links, and admin-only PDF generation. A local smoke/security check is available with `php scripts/security-check-anaf.php`.
+- The Romanian ANAF agreement form at `/acord-anaf` uses the same signed token, honeypot, rate limiting, optional reCAPTCHA v3, encrypted storage, one-time public links, mouse/touch signature capture, admin PDF generation, and a 7-day signed PDF download link for the submitter. PDF generation is based on `resources/acord-anaf-template.pdf`; the generated PDF embeds the drawn signature as an image and records the clear signer name, submission timestamp, IP, signature hash, and sealed audit hash in the signature section. A local smoke/security check is available with `php scripts/security-check-anaf.php`.
 
 - Admin login ban thresholds can be tuned in `config/config.php`:
 
