@@ -146,7 +146,7 @@ try {
     security_check_mark($checks, 'PDF is based on ANAF template', str_contains($pdf, '/T(Nume)') || str_contains($pdf, '/T(Prenume)'));
     security_check_mark($checks, 'PDF includes clear signer name in audit area', str_contains($pdf, 'Semnatar: Popescu Ana'));
     security_check_mark($checks, 'PDF includes electronic acceptance IP', str_contains($pdf, $testIp));
-    security_check_mark($checks, 'PDF includes evidence hash marker', is_array($raw) && str_contains($pdf, substr((string) $raw['evidence_hash'], 0, 24)));
+    security_check_mark($checks, 'PDF includes evidence hash marker', is_array($raw) && str_contains($pdf, 'Audit hash: ' . substr((string) $raw['evidence_hash'], 0, 18) . '...'));
     security_check_mark($checks, 'PDF includes submitted CNP value', str_contains($pdf, strtoupper(bin2hex(mb_convert_encoding($validData['cnp'], 'UTF-16BE', 'UTF-8')))));
     security_check_mark($checks, 'PDF filename includes signer name and CNP suffix', anaf_pdf_download_filename($submitted) === 'acord-anaf-popescu-ana-cnp-221144.pdf');
     $signatureField = security_check_latest_pdf_object($pdf, 23);
@@ -156,6 +156,8 @@ try {
     security_check_mark($checks, 'PDF signature field has no text value overlay', $signatureField !== '' && !str_contains($signatureField, '/V'), $signatureField);
     security_check_mark($checks, 'PDF signature field is read-only', $signatureField !== '' && str_contains($signatureField, '/Ff 1'), $signatureField);
     security_check_mark($checks, 'PDF keeps normalized signature canvas ratio', str_contains($pdf, '/Width ' . ANAF_SIGNATURE_CANVAS_WIDTH . ' /Height ' . ANAF_SIGNATURE_CANVAS_HEIGHT));
+    security_check_mark($checks, 'PDF audit block uses stable Helvetica font', str_contains($pageTwo, '/Helv 22 0 R') && str_contains($pdf, '/Helv 5.4 Tf'));
+    security_check_mark($checks, 'PDF audit hashes are shortened to fit signature area', is_array($submitted) && str_contains($pdf, 'Semnatura hash: ' . substr((string) $submitted['signature_hash'], 0, 18) . '...'));
     security_check_mark($checks, 'PDF form fields are flattened for download', $acroForm !== '' && str_contains($acroForm, '/Fields[]') && !str_contains($pageOne, '/Annots') && !str_contains($pageTwo, '/Annots'));
     security_check_mark($checks, 'PDF viewer must not regenerate form appearances', $acroForm !== '' && str_contains($acroForm, '/NeedAppearances false') && !str_contains($acroForm, '/NeedAppearances true'), $acroForm);
 

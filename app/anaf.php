@@ -1731,6 +1731,13 @@ function anaf_pdf_signature_overlay_commands(?array $image, ?int $imageObject, a
     return $stream . "BT\n/F1 8 Tf\n0 g\n1 0 0 1 " . anaf_pdf_num($x1 + 4.0) . ' ' . anaf_pdf_num($y1 + 12.0) . " Tm\n(Semnatura indisponibila) Tj\nET\n";
 }
 
+function anaf_pdf_text_line_commands(string $fontName, float $fontSize, float $x, float $y, string $text, float $maxWidth): string
+{
+    $text = anaf_pdf_trim_to_box($text, $maxWidth, $fontSize);
+
+    return "BT\n/" . $fontName . ' ' . anaf_pdf_num($fontSize) . " Tf\n0 g\n1 0 0 1 " . anaf_pdf_num($x) . ' ' . anaf_pdf_num($y) . " Tm\n(" . anaf_pdf_escape($text) . ") Tj\nET\n";
+}
+
 function anaf_pdf_data_widget_object(int $appearanceObject, int $pageObject, array $rect): string
 {
     return '<</AP<</N ' . $appearanceObject . ' 0 R>>/F 132/MK<<>>/P ' . $pageObject . ' 0 R/Parent 28 0 R/Rect[' . implode(' ', array_map(static fn (float $number): string => anaf_pdf_num($number), $rect)) . ']/Subtype/Widget/Type/Annot>>';
@@ -1770,7 +1777,7 @@ function anaf_pdf_page_two_object(int $overlayContentObject, ?int $signatureImag
 {
     $signatureResource = $signatureImageObject !== null ? ' /SigImg ' . $signatureImageObject . ' 0 R' : '';
 
-    return '<</Contents[2 0 R ' . $overlayContentObject . ' 0 R]/CropBox[0 0 596.04 842.52]/Group<</CS/DeviceRGB/S/Transparency/Type/Group>>/MediaBox[0 0 596.04 842.52]/Parent 162 0 R/Resources<</ExtGState<</GS10 206 0 R/GS7 207 0 R>>/Font<</F1 210 0 R/F2 213 0 R/F4 222 0 R/F5 228 0 R/F6 231 0 R>>/ProcSet[/PDF/Text/ImageB/ImageC/ImageI]/XObject<</Image31 4 0 R/Image33 6 0 R/Image35 8 0 R' . $signatureResource . '>>>>/Rotate 0/StructParents 1/Tabs/S/Type/Page>>';
+    return '<</Contents[2 0 R ' . $overlayContentObject . ' 0 R]/CropBox[0 0 596.04 842.52]/Group<</CS/DeviceRGB/S/Transparency/Type/Group>>/MediaBox[0 0 596.04 842.52]/Parent 162 0 R/Resources<</ExtGState<</GS10 206 0 R/GS7 207 0 R>>/Font<</F1 210 0 R/F2 213 0 R/F4 222 0 R/F5 228 0 R/F6 231 0 R/Helv 22 0 R>>/ProcSet[/PDF/Text/ImageB/ImageC/ImageI]/XObject<</Image31 4 0 R/Image33 6 0 R/Image35 8 0 R' . $signatureResource . '>>>>/Rotate 0/StructParents 1/Tabs/S/Type/Page>>';
 }
 
 function anaf_pdf_audit_commands(array $row): string
@@ -1781,18 +1788,29 @@ function anaf_pdf_audit_commands(array $row): string
     $hash = (string) ($row['signature_hash'] ?? '');
     $evidenceHash = (string) ($row['evidence_hash'] ?? '');
     $evidenceSeal = (string) ($row['evidence_seal'] ?? '');
-    $stream = "q\nBT\n/F1 12 Tf\n0 g\n1 0 0 1 181 744 Tm\n(X) Tj\nET\n";
-    $stream .= "BT\n/F1 7.0 Tf\n0 g\n1 0 0 1 392 296 Tm\n(Semnatar: " . anaf_pdf_escape($name !== '' ? $name : '-') . ") Tj\nET\n";
-    $stream .= "BT\n/F1 7.0 Tf\n0 g\n1 0 0 1 392 286 Tm\n(Acceptat la: " . anaf_pdf_escape($timestamp) . ") Tj\nET\n";
-    $stream .= "BT\n/F1 7.0 Tf\n0 g\n1 0 0 1 392 276 Tm\n(IP trimitere: " . anaf_pdf_escape($ip !== '' ? $ip : '-') . ") Tj\nET\n";
+    $stream = "q\n";
+    $stream .= anaf_pdf_text_line_commands('Helv', 11.0, 181, 744, 'X', 14);
+
+    $x = 392.0;
+    $y = 296.0;
+    $width = 146.0;
+    $lines = [
+        ['Semnatar: ' . ($name !== '' ? $name : '-'), 5.4, 8.5],
+        ['Acceptat la: ' . $timestamp, 5.2, 8.5],
+        ['IP trimitere: ' . ($ip !== '' ? $ip : '-'), 5.2, 9.0],
+    ];
     if ($hash !== '') {
-        $stream .= "BT\n/F1 6.0 Tf\n0 g\n1 0 0 1 392 266 Tm\n(Semnatura hash: " . anaf_pdf_escape(substr($hash, 0, 24)) . "...) Tj\nET\n";
+        $lines[] = ['Semnatura hash: ' . substr($hash, 0, 18) . '...', 4.4, 7.2];
     }
     if ($evidenceHash !== '') {
-        $stream .= "BT\n/F1 6.0 Tf\n0 g\n1 0 0 1 392 258 Tm\n(Audit hash: " . anaf_pdf_escape(substr($evidenceHash, 0, 24)) . "...) Tj\nET\n";
+        $lines[] = ['Audit hash: ' . substr($evidenceHash, 0, 18) . '...', 4.4, 7.2];
     }
     if ($evidenceSeal !== '') {
-        $stream .= "BT\n/F1 6.0 Tf\n0 g\n1 0 0 1 392 250 Tm\n(Audit seal: " . anaf_pdf_escape(substr($evidenceSeal, 0, 24)) . "...) Tj\nET\n";
+        $lines[] = ['Audit seal: ' . substr($evidenceSeal, 0, 18) . '...', 4.4, 7.2];
+    }
+    foreach ($lines as [$line, $fontSize, $lineHeight]) {
+        $stream .= anaf_pdf_text_line_commands('Helv', (float) $fontSize, $x, $y, (string) $line, $width);
+        $y -= (float) $lineHeight;
     }
     $stream .= "Q";
 
