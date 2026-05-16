@@ -687,10 +687,91 @@ function client_ip_hash(): string
     return hash_hmac('sha256', client_ip(), form_secret());
 }
 
+function ip_matches_trusted_proxy(string $ip, string $proxy): bool
+{
+    $ip = trim($ip);
+    $proxy = trim($proxy);
+    if ($ip === '' || $proxy === '') {
+        return false;
+    }
+    if (!str_contains($proxy, '/')) {
+        return hash_equals($proxy, $ip);
+    }
+
+    [$range, $bits] = explode('/', $proxy, 2);
+    if (!ctype_digit($bits)) {
+        return false;
+    }
+
+    $packedIp = @inet_pton($ip);
+    $packedRange = @inet_pton($range);
+    if ($packedIp === false || $packedRange === false || strlen($packedIp) !== strlen($packedRange)) {
+        return false;
+    }
+
+    $bits = (int) $bits;
+    $maxBits = strlen($packedIp) * 8;
+    if ($bits < 0 || $bits > $maxBits) {
+        return false;
+    }
+
+    $bytes = intdiv($bits, 8);
+    $remainder = $bits % 8;
+    if ($bytes > 0 && substr($packedIp, 0, $bytes) !== substr($packedRange, 0, $bytes)) {
+        return false;
+    }
+    if ($remainder === 0) {
+        return true;
+    }
+
+    $mask = 0xFF << (8 - $remainder) & 0xFF;
+    return (ord($packedIp[$bytes]) & $mask) === (ord($packedRange[$bytes]) & $mask);
+}
+
+function trusted_proxy_headers_enabled(string $remoteAddr): bool
+{
+    $trusted = app_config()['security']['trusted_proxies'] ?? [];
+    if (!is_array($trusted) || !$trusted) {
+        return false;
+    }
+
+    foreach ($trusted as $proxy) {
+        if (ip_matches_trusted_proxy($remoteAddr, (string) $proxy)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function forwarded_client_ip(): ?string
+{
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_REAL_IP'] as $header) {
+        $candidate = trim((string) ($_SERVER[$header] ?? ''));
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return $candidate;
+        }
+    }
+
+    $forwardedFor = (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
+    foreach (explode(',', $forwardedFor) as $candidate) {
+        $candidate = trim($candidate);
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
 function client_ip(): string
 {
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : 'unknown';
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        return 'unknown';
+    }
+
+    return trusted_proxy_headers_enabled($ip) ? (forwarded_client_ip() ?? $ip) : $ip;
 }
 
 function security_policy(string $key, int $default): int

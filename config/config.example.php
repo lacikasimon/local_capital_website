@@ -21,6 +21,7 @@ return [
         'admin_login_max_failures' => 5,
         'admin_login_window_minutes' => 15,
         'admin_login_ban_minutes' => 30,
+        'trusted_proxies' => [],
     ],
     'recaptcha' => [
         'enabled' => false,

@@ -3,6 +3,7 @@
 $recaptchaEnabled = filter_var(getenv('RECAPTCHA_ENABLED') ?: false, FILTER_VALIDATE_BOOLEAN);
 $autoApplyContent = getenv('LOCALCAPITAL_AUTO_APPLY_CONTENT');
 $forceContentUpdates = getenv('LOCALCAPITAL_FORCE_CONTENT_UPDATES');
+$trustedProxies = trim((string) (getenv('TRUSTED_PROXY_CIDRS') ?: ''));
 
 return [
     'db' => [
@@ -29,6 +30,9 @@ return [
         'admin_login_max_failures' => (int) (getenv('ADMIN_LOGIN_MAX_FAILURES') ?: 5),
         'admin_login_window_minutes' => (int) (getenv('ADMIN_LOGIN_WINDOW_MINUTES') ?: 15),
         'admin_login_ban_minutes' => (int) (getenv('ADMIN_LOGIN_BAN_MINUTES') ?: 30),
+        'trusted_proxies' => $trustedProxies !== ''
+            ? array_values(array_filter(array_map('trim', explode(',', $trustedProxies))))
+            : [],
     ],
     'recaptcha' => [
         'enabled' => $recaptchaEnabled,
